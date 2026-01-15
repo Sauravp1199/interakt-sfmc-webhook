@@ -151,8 +151,10 @@ const tests = [
                 }
             };
             const response = await makeRequest('/webhook/interakt', 'POST', payload);
-            // In dev mode, should succeed
-            return response.status === 200 && (response.data.success === true || response.data.message === 'Already processed');
+            // In dev mode, should succeed (200 OK)
+            // Accept either first-time success or already processed
+            if (response.status !== 200) return false;
+            return response.data.success === true || response.data.message === 'Already processed';
         }
     },
     {

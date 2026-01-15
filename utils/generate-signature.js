@@ -48,17 +48,29 @@ function main() {
             process.exit(1);
         }
     } else {
-        // Read from stdin
-        const stdinBuffer = fs.readFileSync(0, 'utf-8');
-        if (!stdinBuffer.trim()) {
-            console.error('Error: No input provided');
-            console.error('Provide JSON via stdin or as a file path argument');
-            process.exit(1);
-        }
+        // Read from stdin asynchronously
         try {
+            // Check if stdin is available (not a TTY)
+            if (process.stdin.isTTY) {
+                console.error('Error: No input provided');
+                console.error('Provide JSON via stdin or as a file path argument');
+                process.exit(1);
+            }
+            
+            const stdinBuffer = fs.readFileSync(0, 'utf-8');
+            if (!stdinBuffer.trim()) {
+                console.error('Error: No input provided');
+                console.error('Provide JSON via stdin or as a file path argument');
+                process.exit(1);
+            }
             payload = JSON.parse(stdinBuffer);
         } catch (error) {
-            console.error('Error parsing JSON from stdin:', error.message);
+            if (error.code === 'EAGAIN' || error.message.includes('stdin')) {
+                console.error('Error: Failed to read from stdin');
+                console.error('Provide JSON via stdin or as a file path argument');
+            } else {
+                console.error('Error parsing JSON from stdin:', error.message);
+            }
             process.exit(1);
         }
     }
