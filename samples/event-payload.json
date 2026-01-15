@@ -1,0 +1,9 @@
+{
+  "result": false,
+  "message": "Test done",
+  "id": "36353-uyw7827",
+  "apiType": "no_header",
+  "timestamp": "2026-01-06T13:57:26.950Z",
+  "phoneNumber": "7211111111",
+  "templateName": "send_templates_noheader_test"
+}

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"Get-Content -Path ''./Interakt''''s Webhooks.txt'' -Raw\")",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)",
+      "Bash(timeout:*)",
+      "Bash(node:*)"
+    ]
+  }
+}

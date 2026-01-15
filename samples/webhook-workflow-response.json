@@ -1,0 +1,40 @@
+{
+  "version": "1.0",
+  "type": "workflow_response_update",
+  "timestamp": "2026-01-13T10:45:00.000Z",
+  "data": {
+    "id": "workflow_resp_abc123",
+    "workflow_id": "wf_feedback_survey",
+    "customer_id": "cust_12345",
+    "customer_number": "919876543210",
+    "customer_name": "John Doe",
+    "data": [
+      {
+        "question": {
+          "id": "q1",
+          "step_number": 1,
+          "message": "How would you rate our service?",
+          "user_trait_name": "service_rating"
+        },
+        "answer": {
+          "id": "a1",
+          "message": "5 - Excellent",
+          "received_at_utc": "2026-01-13T10:43:00.000Z"
+        }
+      },
+      {
+        "question": {
+          "id": "q2",
+          "step_number": 2,
+          "message": "Would you recommend us to others?",
+          "user_trait_name": "recommendation"
+        },
+        "answer": {
+          "id": "a2",
+          "message": "Yes, definitely!",
+          "received_at_utc": "2026-01-13T10:45:00.000Z"
+        }
+      }
+    ]
+  }
+}

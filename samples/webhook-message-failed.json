@@ -1,0 +1,32 @@
+{
+  "version": "1.0",
+  "type": "message_api_failed",
+  "timestamp": "2026-01-13T10:30:05.000Z",
+  "data": {
+    "customer": {
+      "id": "cust_67890",
+      "phone_number": "919876543211",
+      "channel_phone_number": "919876543211",
+      "traits": {
+        "name": "Jane Smith"
+      }
+    },
+    "message": {
+      "id": "msg_failed_xyz789",
+      "message_status": "Failed",
+      "received_at_utc": "2026-01-13T10:30:00.000Z",
+      "delivered_at_utc": null,
+      "seen_at_utc": null,
+      "campaign_id": "camp_promo_2026",
+      "channel_failure_reason": "User phone number is not on WhatsApp",
+      "channel_error_code": "470",
+      "is_template_message": true,
+      "raw_template": "{\"name\": \"promo_template\"}",
+      "meta_data": {
+        "source_data": {
+          "callback_data": "promo_batch_1"
+        }
+      }
+    }
+  }
+}

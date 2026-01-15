@@ -1,0 +1,549 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"name": "Interakt SFMC Webhook API v2",
+		"description": "Collection to test the Interakt to Salesforce Marketing Cloud Webhook Integration API v2.0.\n\n## Single Webhook Endpoint\nAll webhook types hit the same endpoint: `POST /webhook/interakt`\nOnly the request payload changes per event type.\n\n## Supported Webhook Types (15 Total)\n\n### Message Status Events (4)\n- message_api_sent\n- message_api_delivered\n- message_api_read\n- message_api_failed\n\n### Interactions (3)\n- Button Click - Quick Reply (message_api_clicked with click_type=QR)\n- Button Click - CTA (message_api_clicked with click_type=CTA)\n- Incoming Message - Text (message_received)\n- Workflow Response (workflow_response_update)\n\n### Account Events (5)\n- account_alerts\n- account_update\n- account_review_update\n- business_capability_update\n- phone_number_quality_update\n\n### Template Events (3)\n- template_performance_metrics\n- message_template_status_update\n- messages (generic)\n\n## Environment Variables\n| Variable | Value |\n|----------|-------|\n| base_url | http://localhost:1112 |\n| admin_key | local_admin_key_2026 |",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health & Status",
+			"item": [
+				{
+					"name": "Root - Service Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/",
+							"host": ["{{base_url}}"],
+							"path": [""]
+						},
+						"description": "Returns service information and available endpoints."
+					},
+					"response": []
+				},
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": ["{{base_url}}"],
+							"path": ["health"]
+						},
+						"description": "Returns health status including uptime, memory usage, queue stats, SFMC token status."
+					},
+					"response": []
+				},
+				{
+					"name": "Statistics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/stats",
+							"host": ["{{base_url}}"],
+							"path": ["stats"]
+						},
+						"description": "Returns request statistics and queue metrics."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for monitoring application health and status."
+		},
+		{
+			"name": "Admin",
+			"item": [
+				{
+					"name": "Clear Cache",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-admin-key",
+								"value": "{{admin_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/clear-cache",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "clear-cache"]
+						},
+						"description": "Clears the idempotency cache and SFMC token cache."
+					},
+					"response": []
+				},
+				{
+					"name": "Flush Queue",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-admin-key",
+								"value": "{{admin_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/admin/flush-queue",
+							"host": ["{{base_url}}"],
+							"path": ["admin", "flush-queue"]
+						},
+						"description": "Force flush the queue to immediately send all pending records to SFMC."
+					},
+					"response": []
+				}
+			],
+			"description": "Administrative endpoints for cache and queue management."
+		},
+		{
+			"name": "Webhooks - Message Status",
+			"item": [
+				{
+					"name": "Message API Sent",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"type\": \"message_api_sent\",\n  \"data\": {\n    \"customer\": {\n      \"id\": \"52918eb3-bd00-4331-a51d-c4dcffee48d6\",\n      \"channel_phone_number\": \"917003705584\",\n      \"traits\": {\n        \"name\": \"SKGG\",\n        \"amount\": 7000,\n        \"total_orders_count\": 0,\n        \"last_order_id\": null,\n        \"last_order_name\": null,\n        \"total_spent\": \"0.00\",\n        \"whatsapp_opted_in\": false,\n        \"created_at\": \"2021-06-23T06:46:11\",\n        \"User Id\": \"111\",\n        \"email\": \"xyz@gmail.com\"\n      }\n    },\n    \"message\": {\n      \"id\": \"msg_sent_{{$randomUUID}}\",\n      \"chat_message_type\": \"PublicApiMessage\",\n      \"channel_failure_reason\": null,\n      \"message_status\": \"Sent\",\n      \"received_at_utc\": \"{{$isoTimestamp}}\",\n      \"delivered_at_utc\": null,\n      \"seen_at_utc\": null,\n      \"campaign_id\": null,\n      \"is_template_message\": true,\n      \"raw_template\": \"{\\\"id\\\": \\\"281a5a78-f2b2-46c9-b9bb-d620d3b2894c\\\", \\\"name\\\": \\\"test_template_lp\\\", \\\"language\\\": \\\"en\\\", \\\"category\\\": \\\"ALERT_UPDATE\\\", \\\"display_name\\\": \\\"Test template\\\"}\",\n      \"channel_error_code\": null,\n      \"message_content_type\": \"Template\",\n      \"media_url\": null,\n      \"message\": \"[{\\\"type\\\": \\\"body\\\", \\\"parameters\\\": [{\\\"type\\\": \\\"text\\\", \\\"text\\\": \\\"Saandhy\\\"}, {\\\"type\\\": \\\"text\\\", \\\"text\\\": \\\"Varun\\\"}]}]\",\n      \"meta_data\": {\n        \"source\": \"PublicInterakt\",\n        \"source_data\": {\n          \"callback_data\": \"some text here\"\n        }\n      }\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/webhook/interakt",
+							"host": ["{{base_url}}"],
+							"path": ["webhook", "interakt"]
+						},
+						"description": "Webhook fired when a message is sent via API."
+					},
+					"response": []
+				},
+				{
+					"name": "Message API Delivered",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"type\": \"message_api_delivered\",\n  \"data\": {\n    \"customer\": {\n      \"id\": \"52918eb3-bd00-4331-a51d-c4dcffee48d6\",\n      \"channel_phone_number\": \"917003705584\",\n      \"traits\": {\n        \"name\": \"SKGG\",\n        \"amount\": 7000,\n        \"total_orders_count\": 0,\n        \"last_order_id\": null,\n        \"last_order_name\": null,\n        \"total_spent\": \"0.00\",\n        \"whatsapp_opted_in\": false,\n        \"created_at\": \"2021-06-23T06:46:11\",\n        \"User Id\": \"111\",\n        \"email\": \"xyz@gmail.com\"\n      }\n    },\n    \"message\": {\n      \"id\": \"msg_delivered_{{$randomUUID}}\",\n      \"chat_message_type\": \"PublicApiMessage\",\n      \"channel_failure_reason\": null,\n      \"message_status\": \"Delivered\",\n      \"received_at_utc\": \"2022-06-03T05:43:33.133000\",\n      \"delivered_at_utc\": \"{{$isoTimestamp}}\",\n      \"seen_at_utc\": null,\n      \"campaign_id\": null,\n      \"is_template_message\": true,\n      \"raw_template\": \"{\\\"id\\\": \\\"281a5a78-f2b2-46c9-b9bb-d620d3b2894c\\\", \\\"name\\\": \\\"test_template_lp\\\", \\\"language\\\": \\\"en\\\", \\\"display_name\\\": \\\"Test template\\\"}\",\n      \"channel_error_code\": null,\n      \"message_content_type\": \"Template\",\n      \"media_url\": null,\n      \"message\": \"[{\\\"type\\\": \\\"body\\\", \\\"parameters\\\": [{\\\"type\\\": \\\"text\\\", \\\"text\\\": \\\"Saandhy\\\"}, {\\\"type\\\": \\\"text\\\", \\\"text\\\": \\\"Varun\\\"}]}]\",\n      \"meta_data\": {\n        \"source\": \"PublicInterakt\",\n        \"source_data\": {\n          \"callback_data\": \"some text here\"\n        }\n      }\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/webhook/interakt",
+							"host": ["{{base_url}}"],
+							"path": ["webhook", "interakt"]
+						},
+						"description": "Webhook fired when a message is delivered to the user's device."
+					},
+					"response": []
+				},
+				{
+					"name": "Message API Read",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"type\": \"message_api_read\",\n  \"data\": {\n    \"customer\": {\n      \"id\": \"52918eb3-bd00-4331-a51d-c4dcffee48d6\",\n      \"channel_phone_number\": \"917003705584\",\n      \"traits\": {\n        \"name\": \"SKGG\",\n        \"amount\": 7000,\n        \"total_orders_count\": 0,\n        \"last_order_id\": null,\n        \"last_order_name\": null,\n        \"total_spent\": \"0.00\",\n        \"whatsapp_opted_in\": false,\n        \"created_at\": \"2021-06-23T06:46:11\",\n        \"User Id\": \"111\",\n        \"email\": \"xyz@gmail.com\"\n      }\n    },\n    \"message\": {\n      \"id\": \"msg_read_{{$randomUUID}}\",\n      \"chat_message_type\": \"PublicApiMessage\",\n      \"channel_failure_reason\": null,\n      \"message_status\": \"Read\",\n      \"received_at_utc\": \"2022-06-03T05:43:33.133000\",\n      \"delivered_at_utc\": \"2022-06-03T05:43:33.848000\",\n      \"seen_at_utc\": \"{{$isoTimestamp}}\",\n      \"campaign_id\": null,\n      \"is_template_message\": true,\n      \"raw_template\": \"{\\\"id\\\": \\\"281a5a78-f2b2-46c9-b9bb-d620d3b2894c\\\", \\\"name\\\": \\\"test_template_lp\\\", \\\"language\\\": \\\"en\\\", \\\"display_name\\\": \\\"Test template\\\"}\",\n      \"channel_error_code\": null,\n      \"message_content_type\": \"Template\",\n      \"media_url\": null,\n      \"message\": \"[{\\\"type\\\": \\\"body\\\", \\\"parameters\\\": [{\\\"type\\\": \\\"text\\\", \\\"text\\\": \\\"Saandhy\\\"}, {\\\"type\\\": \\\"text\\\", \\\"text\\\": \\\"Varun\\\"}]}]\",\n      \"meta_data\": {\n        \"source\": \"PublicInterakt\",\n        \"source_data\": {\n          \"callback_data\": \"some text here\"\n        }\n      }\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/webhook/interakt",
+							"host": ["{{base_url}}"],
+							"path": ["webhook", "interakt"]
+						},
+						"description": "Webhook fired when a message is read by the user."
+					},
+					"response": []
+				},
+				{
+					"name": "Message API Failed",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"type\": \"message_api_failed\",\n  \"data\": {\n    \"customer\": {\n      \"id\": \"82a5b5bc-5509-4225-a9e9-bbe4c150516b\",\n      \"channel_phone_number\": \"919831\",\n      \"traits\": {\n        \"name\": \"\",\n        \"whatsapp_opted_in\": true\n      }\n    },\n    \"message\": {\n      \"id\": \"msg_failed_{{$randomUUID}}\",\n      \"chat_message_type\": \"PublicApiMessage\",\n      \"channel_failure_reason\": \"Recipient is not a valid WhatsApp user\",\n      \"message_status\": \"Failed\",\n      \"received_at_utc\": \"{{$isoTimestamp}}\",\n      \"delivered_at_utc\": null,\n      \"seen_at_utc\": null,\n      \"campaign_id\": null,\n      \"is_template_message\": true,\n      \"raw_template\": \"{\\\"id\\\": \\\"281a5a78-f2b2-46c9-b9bb-d620d3b2894c\\\", \\\"name\\\": \\\"test_template_lp\\\", \\\"language\\\": \\\"en\\\", \\\"display_name\\\": \\\"Test template\\\"}\",\n      \"channel_error_code\": \"1013\",\n      \"message_content_type\": \"Template\",\n      \"media_url\": null,\n      \"message\": \"[{\\\"type\\\": \\\"body\\\", \\\"parameters\\\": [{\\\"type\\\": \\\"text\\\", \\\"text\\\": \\\"Saandhy\\\"}, {\\\"type\\\": \\\"text\\\", \\\"text\\\": \\\"Varun\\\"}]}]\",\n      \"meta_data\": {\n        \"source\": \"PublicInterakt\",\n        \"source_data\": {\n          \"callback_data\": \"some text here\"\n        }\n      }\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/webhook/interakt",
+							"host": ["{{base_url}}"],
+							"path": ["webhook", "interakt"]
+						},
+						"description": "Webhook fired when a message fails to send."
+					},
+					"response": []
+				}
+			],
+			"description": "Message status webhooks: sent, delivered, read, failed."
+		},
+		{
+			"name": "Webhooks - Interactions",
+			"item": [
+				{
+					"name": "Button Click - Quick Reply",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"type\": \"message_api_clicked\",\n  \"data\": {\n    \"customer\": {\n      \"id\": \"52918eb3-bd00-4331-a51d-c4dcffee48d6\",\n      \"channel_phone_number\": \"917003705584\",\n      \"traits\": {\n        \"name\": \"SKGG\",\n        \"email\": \"xyz@gmail.com\"\n      }\n    },\n    \"message\": {\n      \"id\": \"msg_qr_click_{{$randomUUID}}\",\n      \"chat_message_type\": \"PublicApiMessage\",\n      \"message_status\": \"Read\",\n      \"received_at_utc\": \"2022-06-03T05:43:33.133000\",\n      \"delivered_at_utc\": \"2022-06-03T05:43:33.848000\",\n      \"seen_at_utc\": \"2022-06-03T05:44:00.000000\",\n      \"is_template_message\": true,\n      \"message_content_type\": \"Template\",\n      \"meta_data\": {\n        \"source\": \"PublicInterakt\",\n        \"click_type\": \"QR\",\n        \"button_text\": \"Yes, I'm interested\",\n        \"click_timestamp\": \"{{$isoTimestamp}}\",\n        \"button_payload\": {\n          \"payload\": {\n            \"type\": \"text\",\n            \"text\": \"interested_yes\"\n          }\n        },\n        \"source_data\": {\n          \"callback_data\": \"campaign_123\"\n        }\n      }\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/webhook/interakt",
+							"host": ["{{base_url}}"],
+							"path": ["webhook", "interakt"]
+						},
+						"description": "Webhook fired when user clicks a Quick Reply button."
+					},
+					"response": []
+				},
+				{
+					"name": "Button Click - Call to Action (CTA)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"type\": \"message_api_clicked\",\n  \"data\": {\n    \"customer\": {\n      \"id\": \"52918eb3-bd00-4331-a51d-c4dcffee48d6\",\n      \"channel_phone_number\": \"917003705584\",\n      \"traits\": {\n        \"name\": \"SKGG\",\n        \"email\": \"xyz@gmail.com\"\n      }\n    },\n    \"message\": {\n      \"id\": \"msg_cta_click_{{$randomUUID}}\",\n      \"chat_message_type\": \"PublicApiMessage\",\n      \"message_status\": \"Read\",\n      \"is_template_message\": true,\n      \"message_content_type\": \"Template\"\n    },\n    \"event\": {\n      \"callbackData\": \"order_tracking_123\",\n      \"click_type\": \"CTA\",\n      \"button_text\": \"Track Order\",\n      \"button_link\": \"https://example.com/track/123\",\n      \"click_timestamp\": \"{{$isoTimestamp}}\"\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/webhook/interakt",
+							"host": ["{{base_url}}"],
+							"path": ["webhook", "interakt"]
+						},
+						"description": "Webhook fired when user clicks a CTA (Call to Action) button with URL."
+					},
+					"response": []
+				},
+				{
+					"name": "Incoming Message - Text",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"type\": \"message_received\",\n  \"data\": {\n    \"customer\": {\n      \"id\": \"52918eb3-bd00-4331-a51d-c4dcffee48d6\",\n      \"channel_phone_number\": \"917003705584\",\n      \"phone_number\": \"7003705584\",\n      \"country_code\": \"91\",\n      \"traits\": {\n        \"name\": \"SKGG\",\n        \"email\": \"xyz@gmail.com\",\n        \"whatsapp_opted_in\": true\n      }\n    },\n    \"message\": {\n      \"id\": \"msg_received_{{$randomUUID}}\",\n      \"chat_message_type\": \"CustomerMessage\",\n      \"message_status\": \"Received\",\n      \"received_at_utc\": \"{{$isoTimestamp}}\",\n      \"is_template_message\": false,\n      \"message_content_type\": \"Text\",\n      \"message\": \"Hello, I have a question about my order\",\n      \"media_url\": null,\n      \"meta_data\": {\n        \"source\": \"WhatsApp\"\n      }\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/webhook/interakt",
+							"host": ["{{base_url}}"],
+							"path": ["webhook", "interakt"]
+						},
+						"description": "Webhook fired when a customer sends a text message."
+					},
+					"response": []
+				},
+				{
+					"name": "Workflow Response",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"type\": \"workflow_response_update\",\n  \"data\": {\n    \"id\": \"wf_resp_{{$randomUUID}}\",\n    \"created_at_utc\": \"2024-01-15T10:00:00Z\",\n    \"modified_at_utc\": \"{{$isoTimestamp}}\",\n    \"workflow_id\": \"wf_survey_123\",\n    \"customer_id\": \"52918eb3-bd00-4331-a51d-c4dcffee48d6\",\n    \"customer_name\": \"SKGG\",\n    \"customer_number\": \"917003705584\",\n    \"triggered_from\": \"API\",\n    \"data\": [\n      {\n        \"question\": {\n          \"id\": \"q1_{{$randomUUID}}\",\n          \"step_number\": 1,\n          \"message\": \"How would you rate our service?\",\n          \"message_type\": \"ListMessage\",\n          \"list_message_name\": \"Rating Options\",\n          \"user_trait_name\": \"service_rating\"\n        },\n        \"answer\": {\n          \"id\": \"a1_{{$randomUUID}}\",\n          \"message\": \"Excellent\",\n          \"received_at_utc\": \"2024-01-15T10:01:00Z\",\n          \"message_content_type\": \"Text\"\n        }\n      },\n      {\n        \"question\": {\n          \"id\": \"q2_{{$randomUUID}}\",\n          \"step_number\": 2,\n          \"message\": \"Would you recommend us to others?\",\n          \"message_type\": \"QuickReply\",\n          \"user_trait_name\": \"would_recommend\"\n        },\n        \"answer\": {\n          \"id\": \"a2_{{$randomUUID}}\",\n          \"message\": \"Yes, definitely!\",\n          \"received_at_utc\": \"{{$isoTimestamp}}\",\n          \"message_content_type\": \"Text\"\n        }\n      }\n    ]\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/webhook/interakt",
+							"host": ["{{base_url}}"],
+							"path": ["webhook", "interakt"]
+						},
+						"description": "Webhook fired when a workflow response is updated. Contains Q&A pairs."
+					},
+					"response": []
+				}
+			],
+			"description": "Interaction webhooks: button clicks, incoming messages, workflow responses."
+		},
+		{
+			"name": "Webhooks - Account Events",
+			"item": [
+				{
+					"name": "Account Alerts",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"type\": \"account_alerts\",\n  \"data\": {\n    \"phone_number\": \"917003705584\",\n    \"event\": \"low_balance_warning\",\n    \"message\": \"Your account balance is running low. Please recharge to continue sending messages.\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/webhook/interakt",
+							"host": ["{{base_url}}"],
+							"path": ["webhook", "interakt"]
+						},
+						"description": "Webhook fired for account alert notifications."
+					},
+					"response": []
+				},
+				{
+					"name": "Account Update",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"type\": \"account_update\",\n  \"data\": {\n    \"phone_number\": \"917003705584\",\n    \"event\": \"phone_number_name_update\",\n    \"previous_value\": \"Old Business Name\",\n    \"new_value\": \"New Business Name\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/webhook/interakt",
+							"host": ["{{base_url}}"],
+							"path": ["webhook", "interakt"]
+						},
+						"description": "Webhook fired when account details are updated."
+					},
+					"response": []
+				},
+				{
+					"name": "Account Review Update",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"type\": \"account_review_update\",\n  \"data\": {\n    \"phone_number\": \"917003705584\",\n    \"event\": \"account_review_completed\",\n    \"decision\": \"APPROVED\",\n    \"reason\": null\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/webhook/interakt",
+							"host": ["{{base_url}}"],
+							"path": ["webhook", "interakt"]
+						},
+						"description": "Webhook fired when account review status changes."
+					},
+					"response": []
+				},
+				{
+					"name": "Business Capability Update",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"type\": \"business_capability_update\",\n  \"data\": {\n    \"max_daily_conversation_per_phone\": 1000,\n    \"max_phone_numbers_per_waba\": 25,\n    \"max_phone_numbers_per_business\": 100\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/webhook/interakt",
+							"host": ["{{base_url}}"],
+							"path": ["webhook", "interakt"]
+						},
+						"description": "Webhook fired when business capability limits change."
+					},
+					"response": []
+				},
+				{
+					"name": "Phone Number Quality Update",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"type\": \"phone_number_quality_update\",\n  \"data\": {\n    \"display_phone_number\": \"+91 7003705584\",\n    \"event\": \"quality_score_updated\",\n    \"current_limit\": \"TIER_1K\",\n    \"previous_limit\": \"TIER_500\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/webhook/interakt",
+							"host": ["{{base_url}}"],
+							"path": ["webhook", "interakt"]
+						},
+						"description": "Webhook fired when phone number quality rating changes."
+					},
+					"response": []
+				}
+			],
+			"description": "Account-level event webhooks."
+		},
+		{
+			"name": "Webhooks - Template Events",
+			"item": [
+				{
+					"name": "Template Performance Metrics",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"type\": \"template_performance_metrics\",\n  \"data\": {\n    \"templates_performance_metrics\": {\n      \"template_id\": \"281a5a78-f2b2-46c9-b9bb-d620d3b2894c\",\n      \"template_name\": \"test_template_lp\",\n      \"template_language\": \"en\",\n      \"sent_count\": 1500,\n      \"delivered_count\": 1450,\n      \"read_count\": 1200,\n      \"clicked_count\": 350,\n      \"failed_count\": 50\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/webhook/interakt",
+							"host": ["{{base_url}}"],
+							"path": ["webhook", "interakt"]
+						},
+						"description": "Webhook with template performance metrics."
+					},
+					"response": []
+				},
+				{
+					"name": "Message Template Status Update",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"type\": \"message_template_status_update\",\n  \"data\": {\n    \"event\": \"APPROVED\",\n    \"message_template_id\": \"281a5a78-f2b2-46c9-b9bb-d620d3b2894c\",\n    \"message_template_name\": \"test_template_lp\",\n    \"message_template_language\": \"en\",\n    \"reason\": null\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/webhook/interakt",
+							"host": ["{{base_url}}"],
+							"path": ["webhook", "interakt"]
+						},
+						"description": "Webhook fired when template status changes (APPROVED, REJECTED, etc.)."
+					},
+					"response": []
+				},
+				{
+					"name": "Messages (Generic)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"{{$isoTimestamp}}\",\n  \"type\": \"messages\",\n  \"data\": {\n    \"id\": \"generic_msg_{{$randomUUID}}\",\n    \"event\": \"generic_notification\",\n    \"message\": \"This is a generic message notification\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/webhook/interakt",
+							"host": ["{{base_url}}"],
+							"path": ["webhook", "interakt"]
+						},
+						"description": "Generic messages webhook for miscellaneous notifications."
+					},
+					"response": []
+				}
+			],
+			"description": "Template-related event webhooks."
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [""]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"pm.test(\"Status code is 200\", function () {",
+					"    pm.response.to.have.status(200);",
+					"});",
+					"",
+					"pm.test(\"Response has success field\", function () {",
+					"    var jsonData = pm.response.json();",
+					"    pm.expect(jsonData).to.have.property('success');",
+					"});"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:1112",
+			"type": "string"
+		},
+		{
+			"key": "admin_key",
+			"value": "local_admin_key_2026",
+			"type": "string"
+		}
+	]
+}

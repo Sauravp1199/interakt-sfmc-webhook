@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "type": "message_api_clicked",
+  "timestamp": "2026-01-13T10:35:00.000Z",
+  "data": {
+    "customer": {
+      "id": "cust_12345",
+      "phone_number": "919876543210",
+      "channel_phone_number": "919876543210",
+      "traits": {
+        "name": "John Doe"
+      }
+    },
+    "message": {
+      "id": "msg_click_abc123",
+      "meta_data": {
+        "click_type": "QR",
+        "button_text": "Yes, I'm interested",
+        "click_timestamp": "2026-01-13T10:35:00.000Z",
+        "source_data": {
+          "callback_data": "interest_survey"
+        }
+      }
+    }
+  }
+}
