@@ -201,10 +201,19 @@ app.post('/webhook/interakt', async (req, res) => {
         const { type, data, timestamp } = req.body;
 
         if (!type || !data) {
-            logger.warn('Invalid webhook payload - missing type or data', { requestId });
+            logger.warn('Invalid webhook payload - missing type or data', { 
+                requestId,
+                hasType: !!type,
+                hasData: !!data,
+                bodyKeys: Object.keys(req.body || {})
+            });
             return res.status(400).json({
                 success: false,
-                error: 'Invalid payload: missing type or data',
+                error: 'Invalid payload: missing required fields',
+                details: {
+                    type: type ? 'present' : 'missing',
+                    data: data ? 'present' : 'missing'
+                },
                 requestId
             });
         }
@@ -220,10 +229,30 @@ app.post('/webhook/interakt', async (req, res) => {
             const digest = hmac.update(JSON.stringify(req.body)).digest('hex');
 
             if (digest !== providedSig) {
-                logger.error('Invalid signature', { requestId });
+                logger.error('Invalid signature in fast check', { 
+                    requestId,
+                    signaturePrefix: providedSig.substring(0, 10) + '...',
+                    expectedPrefix: digest.substring(0, 10) + '...'
+                });
                 return res.status(401).json({
                     success: false,
                     error: 'Invalid signature',
+                    details: 'Signature verification failed. Ensure INTERAKT_SECRET is correctly configured.',
+                    requestId
+                });
+            }
+        } else if (secret && !signature) {
+            // Secret is configured but signature is missing
+            const isLocalMode = process.env.NODE_ENV === 'development' || 
+                               process.env.NODE_ENV === 'local' || 
+                               !process.env.NODE_ENV;
+            
+            if (!isLocalMode) {
+                logger.error('Missing signature header in production', { requestId });
+                return res.status(401).json({
+                    success: false,
+                    error: 'Missing signature',
+                    details: 'x-interakt-signature header is required',
                     requestId
                 });
             }
@@ -267,6 +296,7 @@ app.post('/webhook/interakt', async (req, res) => {
                 logger.error('Background SFMC processing failed', {
                     requestId,
                     error: bgError.message,
+                    errorCode: bgError.code,
                     type,
                     stack: bgError.stack
                 });
