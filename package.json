@@ -15,7 +15,9 @@
     "dev:ts": "ts-node-dev --respawn --transpile-only src/server.ts",
     "lint": "eslint src/**/*.ts",
     "clean": "rimraf dist",
-    "prebuild": "npm run clean"
+    "prebuild": "npm run clean",
+    "test:integration": "node test-webhooks.js",
+    "test": "npm run test:integration"
   },
   "keywords": [
     "interakt",
