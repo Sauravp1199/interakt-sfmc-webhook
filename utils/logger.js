@@ -1,7 +1,11 @@
 /**
- * Simple logger utility - OPTIMIZED FOR PERFORMANCE
+ * Enhanced Logger Utility - WITH FILE LOGGING
+ * Logs to console AND file for debugging
  * In production, set LOG_LEVEL=WARN or ERROR for best performance
  */
+
+const fs = require('fs');
+const path = require('path');
 
 const LOG_LEVELS = {
     ERROR: 'ERROR',
@@ -11,8 +15,47 @@ const LOG_LEVELS = {
 };
 
 // Cache the log level check for performance
-const CURRENT_LOG_LEVEL = process.env.LOG_LEVEL || 'INFO';
+const CURRENT_LOG_LEVEL = process.env.LOG_LEVEL || 'DEBUG';
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const ENABLE_FILE_LOGGING = process.env.ENABLE_FILE_LOGGING === 'true';
+
+// Create logs directory if it doesn't exist
+const logsDir = path.join(__dirname, '../logs');
+if (ENABLE_FILE_LOGGING && !fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+}
+
+// Log file paths
+const errorLogPath = path.join(logsDir, 'error.log');
+const combinedLogPath = path.join(logsDir, 'combined.log');
+const debugLogPath = path.join(logsDir, 'debug.log');
+
+// Log rotation helpers
+function rotateLogFile(filePath, maxSizeBytes = 10 * 1024 * 1024) { // 10MB default
+    try {
+        if (fs.existsSync(filePath)) {
+            const stats = fs.statSync(filePath);
+            if (stats.size > maxSizeBytes) {
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                const backupPath = `${filePath}.${timestamp}.bak`;
+                fs.renameSync(filePath, backupPath);
+            }
+        }
+    } catch (err) {
+        console.error('Log rotation error:', err.message);
+    }
+}
+
+function writeToFile(filePath, message) {
+    if (!ENABLE_FILE_LOGGING) return;
+
+    try {
+        rotateLogFile(filePath);
+        fs.appendFileSync(filePath, message + '\n', { encoding: 'utf8' });
+    } catch (err) {
+        console.error(`Failed to write to log file ${filePath}:`, err.message);
+    }
+}
 
 const LOG_LEVEL_PRIORITY = {
     ERROR: 0,
@@ -33,6 +76,7 @@ function shouldLog(level) {
 
 function formatMessage(level, message, meta = {}) {
     const timestamp = new Date().toISOString();
+
     // Skip meta serialization in production for INFO level (performance)
     if (IS_PRODUCTION && level === 'INFO' && Object.keys(meta).length > 3) {
         // Only include essential keys in production
@@ -45,8 +89,9 @@ function formatMessage(level, message, meta = {}) {
             : '';
         return `[${timestamp}] [${level}] ${message}${metaString}`;
     }
+
     const metaString = Object.keys(meta).length > 0
-        ? ` | ${JSON.stringify(meta)}`
+        ? ` | ${JSON.stringify(meta, null, 2)}`
         : '';
 
     return `[${timestamp}] [${level}] ${message}${metaString}`;
@@ -54,25 +99,56 @@ function formatMessage(level, message, meta = {}) {
 
 function error(message, meta = {}) {
     if (LOG_ERROR) {
-        console.error(formatMessage(LOG_LEVELS.ERROR, message, meta));
+        const formatted = formatMessage(LOG_LEVELS.ERROR, message, meta);
+        console.error(formatted);
+        writeToFile(errorLogPath, formatted);
+        writeToFile(combinedLogPath, formatted);
     }
 }
 
 function warn(message, meta = {}) {
     if (LOG_WARN) {
-        console.warn(formatMessage(LOG_LEVELS.WARN, message, meta));
+        const formatted = formatMessage(LOG_LEVELS.WARN, message, meta);
+        console.warn(formatted);
+        writeToFile(combinedLogPath, formatted);
     }
 }
 
 function info(message, meta = {}) {
     if (LOG_INFO) {
-        console.log(formatMessage(LOG_LEVELS.INFO, message, meta));
+        const formatted = formatMessage(LOG_LEVELS.INFO, message, meta);
+        console.log(formatted);
+        writeToFile(combinedLogPath, formatted);
     }
 }
 
 function debug(message, meta = {}) {
     if (LOG_DEBUG) {
-        console.log(formatMessage(LOG_LEVELS.DEBUG, message, meta));
+        const formatted = formatMessage(LOG_LEVELS.DEBUG, message, meta);
+        console.log(formatted);
+        writeToFile(debugLogPath, formatted);
+        writeToFile(combinedLogPath, formatted);
+    }
+}
+
+function getLogs(type = 'combined') {
+    const logFile = type === 'error' ? errorLogPath :
+        type === 'debug' ? debugLogPath : combinedLogPath;
+    try {
+        return fs.existsSync(logFile) ? fs.readFileSync(logFile, 'utf8') : 'No logs yet';
+    } catch (err) {
+        return `Error reading log file: ${err.message}`;
+    }
+}
+
+function clearLogs() {
+    try {
+        if (fs.existsSync(errorLogPath)) fs.unlinkSync(errorLogPath);
+        if (fs.existsSync(combinedLogPath)) fs.unlinkSync(combinedLogPath);
+        if (fs.existsSync(debugLogPath)) fs.unlinkSync(debugLogPath);
+        console.log('✓ Log files cleared');
+    } catch (err) {
+        console.error('Error clearing logs:', err.message);
     }
 }
 
@@ -80,5 +156,9 @@ module.exports = {
     error,
     warn,
     info,
-    debug
+    debug,
+    getLogs,
+    clearLogs,
+    ENABLE_FILE_LOGGING,
+    logsDir
 };

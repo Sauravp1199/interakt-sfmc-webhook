@@ -1,0 +1,82 @@
+version: "3.8"
+
+services:
+  # Redis Queue Storage
+  redis:
+    image: redis:7-alpine
+    container_name: redis-interakt-webhook
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - webhook-network
+
+  # Application Service
+  webhook-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: interakt-webhook
+    ports:
+      - "1112:1112"
+    environment:
+      NODE_ENV: production
+      PORT: 1112
+      LOG_LEVEL: info
+      REDIS_URL: redis://redis:6379
+
+      # SFMC Configuration
+      SFMC_AUTH_BASE_URL: ${SFMC_AUTH_BASE_URL}
+      SFMC_SOAP_BASE_URL: ${SFMC_SOAP_BASE_URL}
+      SFMC_CLIENT_ID: ${SFMC_CLIENT_ID}
+      SFMC_CLIENT_SECRET: ${SFMC_CLIENT_SECRET}
+      SFMC_ACCOUNT_ID: ${SFMC_ACCOUNT_ID}
+
+      # Data Extension Keys
+      DE_WEBHOOK_MASTER: ${DE_WEBHOOK_MASTER}
+      DE_WEBHOOK_EVENTS: ${DE_WEBHOOK_EVENTS}
+      SFMC_DE_CUSTOMER_KEY: ${SFMC_DE_CUSTOMER_KEY}
+
+      # Webhook Credentials
+      LOCAL_INTERAKT_SECRET: ${LOCAL_INTERAKT_SECRET}
+      PROD_INTERAKT_SECRET: ${PROD_INTERAKT_SECRET}
+
+      # Queue Configuration
+      QUEUE_BATCH_SIZE: 30
+      QUEUE_MAX_RETRIES: 5
+      QUEUE_BATCH_TIMEOUT: 5000
+      BATCH_WORKER_ENABLED: "true"
+      BATCH_WORKER_POLL_INTERVAL: 2000
+      RETRY_WORKER_ENABLED: "true"
+      RETRY_IDLE_THRESHOLD: 5
+      RETRY_IDLE_DURATION: 10000
+      RETRY_POLL_INTERVAL: 5000
+      ADMIN_SECRET: ${ADMIN_SECRET}
+
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - webhook-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  webhook-network:
+    driver: bridge

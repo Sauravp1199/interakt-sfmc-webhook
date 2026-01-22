@@ -58,7 +58,7 @@ export const config = {
   logLevel: process.env.LOG_LEVEL || 'info',
 
   // Token cache settings
-  tokenRefreshBuffer: 60, // Refresh token 60 seconds before expiry
+  tokenRefreshBuffer: 0, // Use token for full 19 minutes (1140 seconds), no early refresh
 
   // Retry settings
   maxRetries: 2,

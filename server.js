@@ -19,9 +19,10 @@ const bodyParser = require('body-parser');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { handleWebhook, initializeHandler } = require('./lib/webhook-handler');
-const { getStats, clearCache } = require('./lib/idempotency');
+const { getStats, clearCache, startAutoClearTimer, stopAutoClearTimer } = require('./lib/idempotency');
 const { getQueueStats, flush: flushQueue, shutdown: shutdownQueue } = require('./lib/queue');
 const { getTokenStatus, clearTokenCache } = require('./lib/sfmc-client');
+const RequestQueue = require('./lib/request-queue');
 const logger = require('./utils/logger');
 
 const app = express();
@@ -30,6 +31,9 @@ const PORT = process.env.PORT || 1112;
 // Initialize webhook handler (sets up queue)
 initializeHandler();
 
+// Start automatic cache clearing timer
+startAutoClearTimer();
+
 // Security middleware
 app.use(helmet());
 app.use(bodyParser.json({ limit: '10mb' }));
@@ -37,16 +41,29 @@ app.use(bodyParser.json({ limit: '10mb' }));
 // Trust proxy (required for Heroku/reverse proxy)
 app.set('trust proxy', 1);
 
-// Rate limiting - prevent abuse
-const webhookLimiter = rateLimit({
-    windowMs: 1 * 60 * 1000, // 1 minute
-    max: 100, // Max 100 requests per minute per IP
-    message: { error: 'Too many requests, please try again later' },
-    standardHeaders: true,
-    legacyHeaders: false,
+// ===== REQUEST QUEUEING MIDDLEWARE =====
+// Queue incoming requests instead of rejecting them
+// This allows unlimited requests but processes them at controlled rate
+const requestQueue = new RequestQueue({
+    concurrentLimit: 5,      // Allow 5 concurrent webhook processes
+    maxQueueSize: 1000       // Max 1000 requests in queue
 });
 
-app.use('/webhook', webhookLimiter);
+app.use('/webhook', requestQueue.middleware());
+
+// ===== OPTIONAL: Express Rate Limiter (for DDoS protection) =====
+// Set to high limit since we're using request queue
+const webhookLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000,  // 1 minute
+    max: 10000,                // 10,000 requests per minute (very permissive)
+    message: { error: 'Service temporarily unavailable' },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: () => true           // Disabled - using request queue instead
+});
+
+// Not applied - using request queue instead
+// app.use('/webhook', webhookLimiter);
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -69,6 +86,7 @@ app.get('/', (req, res) => {
         endpoints: {
             health: 'GET /health',
             stats: 'GET /stats',
+            requestQueueStats: 'GET /queue-stats',
             webhook: 'POST /webhook/interakt',
             adminClearCache: 'POST /admin/clear-cache',
             adminFlushQueue: 'POST /admin/flush-queue'
@@ -111,11 +129,32 @@ app.get('/health', (req, res) => {
 });
 
 // =============================================================================
+// REQUEST QUEUE STATS ENDPOINT
+// =============================================================================
+app.get('/queue-stats', (req, res) => {
+    const queueStats = requestQueue.getStats();
+    const batchQueueStats = getQueueStats();
+
+    res.status(200).json({
+        timestamp: new Date().toISOString(),
+        requestQueue: {
+            description: 'Incoming webhook request queue',
+            ...queueStats
+        },
+        batchQueue: {
+            description: 'SFMC batch processing queue',
+            ...batchQueueStats
+        }
+    });
+});
+
+// =============================================================================
 // STATS ENDPOINT
 // =============================================================================
 app.get('/stats', (req, res) => {
     const cacheStats = getStats();
     const queueStats = getQueueStats();
+    const requestQueueStats = requestQueue.getStats();
 
     res.status(200).json({
         timestamp: new Date().toISOString(),
@@ -261,7 +300,8 @@ app.post('/webhook/interakt', async (req, res) => {
         // Fire-and-forget: Process SFMC asynchronously after response
         setImmediate(async () => {
             try {
-                await handleWebhook(req.body, req.headers);
+                // Skip idempotency check since we already verified and marked as processed above
+                await handleWebhook(req.body, req.headers, { skipIdempotencyCheck: true });
                 logger.info('Background SFMC processing completed', { requestId, type });
             } catch (bgError) {
                 logger.error('Background SFMC processing failed', {
@@ -348,7 +388,7 @@ const server = app.listen(PORT, () => {
     console.log(`  - SFMC Auth URL:    ${process.env.SFMC_AUTH_BASE_URL ? '[SET]' : '[NOT SET]'}`);
     console.log(`  - SFMC REST URL:    ${process.env.SFMC_REST_BASE_URL ? '[SET]' : '[NOT SET]'}`);
     console.log(`  - DE Customer Key:  ${process.env.SFMC_DE_CUSTOMER_KEY ? '[SET]' : '[NOT SET]'}`);
-    console.log(`  - Queue Batch Size: ${process.env.QUEUE_BATCH_SIZE || 2}`);
+    console.log(`  - Queue Batch Size: ${process.env.QUEUE_BATCH_SIZE || 200}`);
     console.log('========================================');
     console.log('  Endpoints:');
     console.log('  - GET  /               Service info');
@@ -364,6 +404,9 @@ const server = app.listen(PORT, () => {
 // =============================================================================
 const shutdown = async (signal) => {
     logger.info(`${signal} signal received: shutting down gracefully`);
+
+    // Stop auto-clear timer
+    stopAutoClearTimer();
 
     // Flush queue before shutdown
     try {
