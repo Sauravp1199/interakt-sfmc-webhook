@@ -6,7 +6,7 @@
 
 import { logger } from '../utils/logger';
 import { getQueueService } from './redis-queue';
-import { upsertToDataExtension } from '../services/sfmcSoap';
+import { upsertToDataExtension } from '../services/sfmcRest';
 import { classifyError } from './error-classifier';
 import { config } from '../config';
 

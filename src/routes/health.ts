@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { config } from '../config';
 import { getTokenCacheStatus } from '../services/sfmcAuth';
+import { signatureAuthMiddleware } from '../middleware/signature-auth';
 
 const router = Router();
 
@@ -47,9 +48,9 @@ router.get('/', (_req: Request, res: Response) => {
 
 /**
  * GET /health
- * Health check endpoint
+ * Health check endpoint - REQUIRES SIGNATURE
  */
-router.get('/health', (_req: Request, res: Response) => {
+router.get('/health', signatureAuthMiddleware, (_req: Request, res: Response) => {
   const tokenStatus = getTokenCacheStatus();
   const uptimeSeconds = Math.floor((Date.now() - serverStartTime) / 1000);
   const memoryUsage = process.memoryUsage();
@@ -87,9 +88,9 @@ router.get('/health', (_req: Request, res: Response) => {
 
 /**
  * GET /stats
- * Statistics endpoint
+ * Statistics endpoint - REQUIRES SIGNATURE
  */
-router.get('/stats', (_req: Request, res: Response) => {
+router.get('/stats', signatureAuthMiddleware, (_req: Request, res: Response) => {
   const tokenStatus = getTokenCacheStatus();
   const uptimeSeconds = Math.floor((Date.now() - serverStartTime) / 1000);
 

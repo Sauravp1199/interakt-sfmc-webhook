@@ -29,6 +29,7 @@ if (ENABLE_FILE_LOGGING && !fs.existsSync(logsDir)) {
 const errorLogPath = path.join(logsDir, 'error.log');
 const combinedLogPath = path.join(logsDir, 'combined.log');
 const debugLogPath = path.join(logsDir, 'debug.log');
+const debugRequestsLogPath = path.join(logsDir, 'debug-requests.log');
 
 // Log rotation helpers
 function rotateLogFile(filePath, maxSizeBytes = 10 * 1024 * 1024) { // 10MB default
@@ -131,9 +132,77 @@ function debug(message, meta = {}) {
     }
 }
 
+/**
+ * Log detailed request/response bodies to separate debug-requests.log file
+ * Useful for debugging API interactions without cluttering other logs
+ */
+function debugRequest(requestInfo) {
+    if (!ENABLE_FILE_LOGGING) return;
+
+    const timestamp = new Date().toISOString();
+    const separator = '═'.repeat(100);
+
+    let logMessage = `\n${separator}\n[${timestamp}] REQUEST/RESPONSE DEBUG\n${separator}\n`;
+
+    if (requestInfo.type) {
+        logMessage += `\n📌 Type: ${requestInfo.type}\n`;
+    }
+
+    if (requestInfo.url) {
+        logMessage += `\n🌐 URL: ${requestInfo.url}\n`;
+    }
+
+    if (requestInfo.method) {
+        logMessage += `📤 Method: ${requestInfo.method}\n`;
+    }
+
+    if (requestInfo.requestHeaders) {
+        logMessage += `\n📋 Request Headers:\n${JSON.stringify(requestInfo.requestHeaders, null, 2)}\n`;
+    }
+
+    if (requestInfo.requestBody) {
+        logMessage += `\n📨 Request Body:\n${typeof requestInfo.requestBody === 'string'
+            ? requestInfo.requestBody
+            : JSON.stringify(requestInfo.requestBody, null, 2)}\n`;
+    }
+
+    if (requestInfo.statusCode) {
+        logMessage += `\n✅ Response Status: ${requestInfo.statusCode}\n`;
+    }
+
+    if (requestInfo.responseHeaders) {
+        logMessage += `\n📋 Response Headers:\n${JSON.stringify(requestInfo.responseHeaders, null, 2)}\n`;
+    }
+
+    if (requestInfo.responseBody) {
+        logMessage += `\n📥 Response Body:\n${typeof requestInfo.responseBody === 'string'
+            ? requestInfo.responseBody
+            : JSON.stringify(requestInfo.responseBody, null, 2)}\n`;
+    }
+
+    if (requestInfo.error) {
+        logMessage += `\n❌ Error: ${requestInfo.error}\n`;
+    }
+
+    if (requestInfo.errorStack) {
+        logMessage += `\n🔗 Error Stack:\n${requestInfo.errorStack}\n`;
+    }
+
+    logMessage += `\n${separator}\n`;
+
+    try {
+        rotateLogFile(debugRequestsLogPath);
+        fs.appendFileSync(debugRequestsLogPath, logMessage, { encoding: 'utf8' });
+    } catch (err) {
+        console.error(`Failed to write to debug-requests.log:`, err.message);
+    }
+}
+
 function getLogs(type = 'combined') {
     const logFile = type === 'error' ? errorLogPath :
-        type === 'debug' ? debugLogPath : combinedLogPath;
+        type === 'debug' ? debugLogPath :
+            type === 'debug-requests' ? debugRequestsLogPath :
+                combinedLogPath;
     try {
         return fs.existsSync(logFile) ? fs.readFileSync(logFile, 'utf8') : 'No logs yet';
     } catch (err) {
@@ -146,6 +215,7 @@ function clearLogs() {
         if (fs.existsSync(errorLogPath)) fs.unlinkSync(errorLogPath);
         if (fs.existsSync(combinedLogPath)) fs.unlinkSync(combinedLogPath);
         if (fs.existsSync(debugLogPath)) fs.unlinkSync(debugLogPath);
+        if (fs.existsSync(debugRequestsLogPath)) fs.unlinkSync(debugRequestsLogPath);
         console.log('✓ Log files cleared');
     } catch (err) {
         console.error('Error clearing logs:', err.message);
@@ -157,6 +227,7 @@ module.exports = {
     warn,
     info,
     debug,
+    debugRequest,
     getLogs,
     clearLogs,
     ENABLE_FILE_LOGGING,

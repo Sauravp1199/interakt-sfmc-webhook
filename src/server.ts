@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { config, validateConfig } from './config';
 import { logger } from './utils/logger';
+import { signatureAuthMiddleware } from './middleware/signature-auth';
 import healthRouter, { incrementStats } from './routes/health';
 import eventRouter from './routes/event';
 import webhookRouter from './routes/webhook';
@@ -104,11 +105,20 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// Routes
+// ========================================
+// PUBLIC ROUTES (No signature required)
+// ========================================
 app.use('/', healthRouter);
-app.use('/event', eventRouter);
-app.use('/webhook', webhookRouter);
-app.use('/admin', adminRouter);
+
+// ========================================
+// PROTECTED ROUTES (Signature required)
+// All these routes require valid Interakt-Signature header
+// ========================================
+
+// Apply signature authentication to protected routes
+app.use('/event', signatureAuthMiddleware, eventRouter);
+app.use('/webhook', signatureAuthMiddleware, webhookRouter);
+app.use('/admin', signatureAuthMiddleware, adminRouter);
 
 // 404 handler
 app.use((req: Request, res: Response) => {
@@ -141,27 +151,9 @@ const server = app.listen(config.port, async () => {
     port: config.port,
     environment: config.nodeEnv,
     nodeVersion: process.version,
+    batchWorker: batchWorker.isActive() ? 'Enabled' : 'Disabled',
+    retryWorker: retryWorker.isActive() ? 'Enabled' : 'Disabled',
   });
-
-  console.log('\n========================================');
-  console.log('  Interakt SFMC Webhook Server v2.0');
-  console.log('========================================');
-  console.log(`  Port:        ${config.port}`);
-  console.log(`  Environment: ${config.nodeEnv}`);
-  console.log(`  Node:        ${process.version}`);
-  console.log('========================================');
-  console.log('  Endpoints:');
-  console.log(`  - GET  /           Service info`);
-  console.log(`  - GET  /health     Health check`);
-  console.log(`  - GET  /stats      Statistics`);
-  console.log(`  - POST /event      Event receiver`);
-  console.log(`  - POST /webhook/interakt  Webhook receiver`);
-  console.log('========================================');
-  console.log('  Queue System:');
-  console.log(`  - Batch Worker:    ${batchWorker.isActive() ? 'Enabled' : 'Disabled'}`);
-  console.log(`  - Retry Worker:    ${retryWorker.isActive() ? 'Enabled' : 'Disabled'}`);
-  console.log('========================================');
-  console.log('  Starting queue workers...\n');
 
   // Start queue workers
   try {
@@ -181,8 +173,6 @@ const server = app.listen(config.port, async () => {
       error: error instanceof Error ? error.message : String(error),
     });
   }
-
-  console.log('  Ready to receive requests\n');
 });
 
 // Graceful shutdown handlers

@@ -1,10 +1,9 @@
 import { Router, Request, Response } from 'express';
-import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
-import { config, getCredentials, isLocalhost } from '../config';
+import { config } from '../config';
 import { logger } from '../utils/logger';
 import { validateWebhookPayload, ValidationError, InteraktWebhookPayload } from '../utils/validator';
-import { upsertToDataExtension } from '../services/sfmcSoap';
+import { upsertToDataExtension } from '../services/sfmcRest';
 
 const router = Router();
 
@@ -44,6 +43,76 @@ const WEBHOOK_TYPES = {
   TEMPLATE_PERFORMANCE_METRICS: 'template_performance_metrics',
   MESSAGE_TEMPLATE_STATUS_UPDATE: 'message_template_status_update',
 };
+
+/**
+ * Transform legacy Format 1 payload to Format 2
+ * Format 1: { customer, message, event }
+ * Format 2: { version, type, timestamp, data: { customer, message } }
+ */
+function transformLegacyPayload(payload: Record<string, unknown>): Record<string, unknown> {
+  // If already in Format 2 (has version, type, timestamp, data), return as-is
+  if (payload.version || (payload.type && payload.data)) {
+    return payload;
+  }
+
+  // Check if this is Format 1 (has customer, message, or event at root)
+  const customer = payload.customer as Record<string, unknown> | undefined;
+  const message = payload.message as Record<string, unknown> | undefined;
+  const event = payload.event as Record<string, unknown> | undefined;
+
+  if (!customer && !message && !event) {
+    // Not Format 1 either - return as-is and let validation handle it
+    return payload;
+  }
+
+  // Transform to Format 2
+  logger.debug('Transforming Format 1 payload to Format 2', { hasCustomer: !!customer, hasMessage: !!message, hasEvent: !!event });
+
+  // Copy message and merge event fields into meta_data
+  const transformedMessage = { ...message } as Record<string, unknown>;
+  if (event) {
+    const existingMetaData = (transformedMessage.meta_data || {}) as Record<string, unknown>;
+    transformedMessage.meta_data = {
+      ...existingMetaData,
+      ...event, // Merge all event fields
+    };
+  }
+
+  // Detect type from payload
+  let detectedType = 'message_api_clicked';
+  if (event?.click_type) {
+    detectedType = 'message_api_clicked';
+  } else if (message?.message_status) {
+    const status = String(message.message_status).toLowerCase();
+    switch (status) {
+      case 'sent':
+        detectedType = 'message_api_sent';
+        break;
+      case 'delivered':
+        detectedType = 'message_api_delivered';
+        break;
+      case 'read':
+        detectedType = 'message_api_read';
+        break;
+      case 'failed':
+        detectedType = 'message_api_failed';
+        break;
+      case 'received':
+        detectedType = 'message_received';
+        break;
+    }
+  }
+
+  return {
+    version: '1.0',
+    timestamp: payload.timestamp || new Date().toISOString(),
+    type: payload.type || detectedType,
+    data: {
+      customer,
+      message: transformedMessage,
+    },
+  };
+}
 
 /**
  * Master Data Extension field interface - Flattened structure with 95 fields
@@ -289,51 +358,6 @@ function createEmptyMasterData(): MasterWebhookData {
     // Raw payload
     data_full_payload_json: '',
   };
-}
-
-/**
- * Verify webhook signature from Interakt
- */
-function verifySignature(payload: string, signature: string | undefined, secret: string, isLocal: boolean): boolean {
-  if (!signature) {
-    if (isLocal) {
-      logger.info('No signature provided - allowed in LOCAL environment for testing');
-      return true;
-    }
-    logger.warn('No signature provided in webhook request');
-    return !secret;
-  }
-
-  if (!secret) {
-    logger.warn('INTERAKT_SECRET not configured, skipping signature verification');
-    return true;
-  }
-
-  const providedSignature = signature.startsWith('sha256=')
-    ? signature.substring(7)
-    : signature;
-
-  const hmac = crypto.createHmac('sha256', secret);
-  const expectedSignature = hmac.update(payload).digest('hex');
-
-  try {
-    const isValid = crypto.timingSafeEqual(
-      Buffer.from(providedSignature, 'hex'),
-      Buffer.from(expectedSignature, 'hex')
-    );
-
-    if (!isValid) {
-      logger.error('Invalid webhook signature', {
-        expected: expectedSignature.substring(0, 10) + '...',
-        received: providedSignature.substring(0, 10) + '...',
-      });
-    }
-
-    return isValid;
-  } catch {
-    logger.error('Signature comparison failed');
-    return false;
-  }
 }
 
 /**
@@ -659,6 +683,12 @@ async function handleGenericEvent(payload: InteraktWebhookPayload, rawPayload: s
 /**
  * POST /webhook/interakt
  * Main webhook endpoint for Interakt events - stores ALL events in master Data Extension
+ * 
+ * SIGNATURE VALIDATION:
+ * Signature verification is handled by signatureAuthMiddleware in src/middleware/signature-auth.ts
+ * This middleware validates the Interakt-Signature header before the request reaches this handler
+ * 
+ * Therefore, if we reach this point, the signature is already verified as valid
  */
 router.post('/interakt', async (req: Request, res: Response) => {
   const startTime = Date.now();
@@ -667,27 +697,17 @@ router.post('/interakt', async (req: Request, res: Response) => {
     `wh_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
   try {
-    const host = req.headers.host as string | undefined;
-    const credentials = getCredentials(host);
-    const envType = isLocalhost(host) ? 'LOCAL' : 'PROD';
-
-    logger.debug('Request environment detected', { host, envType, requestId });
+    logger.debug('Webhook request received', { requestId });
 
     const rawBody = JSON.stringify(req.body);
 
-    const signature = req.headers['x-interakt-signature'] as string | undefined;
-    const isLocal = envType === 'LOCAL';
-    if (!verifySignature(rawBody, signature, credentials.interaktSecret, isLocal)) {
-      logger.warn('Invalid webhook signature', { requestId, envType });
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid signature',
-        requestId,
-        environment: envType,
-      });
-    }
+    // NOTE: Signature verification is already done by signatureAuthMiddleware
+    // No need to check signature here - it's already validated
 
-    const payload = validateWebhookPayload(req.body);
+    // Transform legacy Format 1 payload to Format 2 if needed
+    const transformedBody = transformLegacyPayload(req.body as Record<string, unknown>);
+
+    const payload = validateWebhookPayload(transformedBody);
 
     logger.info('Webhook received', {
       requestId,

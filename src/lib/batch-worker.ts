@@ -5,7 +5,7 @@
 
 import { logger } from '../utils/logger';
 import { getQueueService } from './redis-queue';
-import { upsertToDataExtension } from '../services/sfmcSoap';
+import { upsertToDataExtension } from '../services/sfmcRest';
 import { classifyError, ErrorClassificationResult } from './error-classifier';
 import { QueueMessage } from './queue-types';
 import { config } from '../config';
@@ -20,6 +20,9 @@ export class BatchWorker {
     private isRunning = false;
     private pollInterval: NodeJS.Timeout | null = null;
     private config: BatchWorkerConfig;
+    private lastMessageTime: number = 0;
+    private currentBatchSize: number = 0;
+    private batchStartTime: number = 0;
 
     constructor(config: BatchWorkerConfig) {
         this.config = {
@@ -72,7 +75,10 @@ export class BatchWorker {
     }
 
     /**
-     * Poll and process batches
+     * Poll and process batches with intelligent timeout logic
+     * - When 2+ records collected, waits 3 seconds
+     * - If no new record in 3 seconds, flushes batch
+     * - If batch reaches max size (1000), flushes immediately
      */
     private poll(): void {
         if (!this.isRunning) return;
@@ -89,15 +95,59 @@ export class BatchWorker {
     }
 
     /**
-     * Process a single batch from the queue
+     * Intelligent batch processing with smart timeout
+     * Flushes when:
+     * 1. Batch reaches 1000 records (max batch size)
+     * 2. 3 seconds passed since last record AND 2+ records in batch
+     * 3. Fallback timeout if no activity
      */
     private async processBatch(): Promise<void> {
         const queueService = getQueueService();
         const batchConfig = queueService.getBatchConfig();
+        const now = Date.now();
+        const SMART_TIMEOUT_MS = 3000; // 3 second timeout
+        const FALLBACK_TIMEOUT_MS = 30000; // 30 second fallback timeout
+        const MIN_RECORDS_FOR_TIMEOUT = 2; // Wait for at least 2 records
 
-        // Check queue size - skip if empty or very small
+        // Check queue size
         const stats = await queueService.getQueueStats();
         if (stats.mainQueue.size === 0) {
+            // Reset batch tracking if queue is empty
+            this.lastMessageTime = 0;
+            this.currentBatchSize = 0;
+            return;
+        }
+
+        // Update tracking if queue has new messages
+        if (stats.mainQueue.size > 0) {
+            if (this.currentBatchSize === 0) {
+                // First message(s) arriving - start batch timer
+                this.batchStartTime = now;
+                this.lastMessageTime = now;
+                logger.debug('Smart batch: Starting new batch collection');
+            } else {
+                // More messages arriving - reset smart timeout
+                this.lastMessageTime = now;
+            }
+            this.currentBatchSize = stats.mainQueue.size;
+        }
+
+        // Determine if batch should be flushed
+        const timeSinceLastMessage = now - this.lastMessageTime;
+        const timeSinceBatchStart = now - this.batchStartTime;
+        const shouldFlush =
+            this.currentBatchSize >= batchConfig.maxBatchSize || // Reached max size (1000)
+            (this.currentBatchSize >= MIN_RECORDS_FOR_TIMEOUT &&
+                timeSinceLastMessage >= SMART_TIMEOUT_MS) || // 3 sec timeout with 2+ records
+            timeSinceBatchStart >= FALLBACK_TIMEOUT_MS; // Fallback 30 sec timeout
+
+        if (!shouldFlush) {
+            logger.debug('Smart batch: Waiting for more records', {
+                currentSize: this.currentBatchSize,
+                maxSize: batchConfig.maxBatchSize,
+                timeSinceLastMsg: timeSinceLastMessage,
+                timeout: SMART_TIMEOUT_MS,
+            });
             return;
         }
 
@@ -105,13 +155,32 @@ export class BatchWorker {
         const messages = await queueService.dequeueBatch(batchConfig.maxBatchSize);
 
         if (messages.length === 0) {
+            // Reset batch state
+            this.lastMessageTime = 0;
+            this.currentBatchSize = 0;
             return;
         }
 
-        logger.info('Processing batch', {
+        // Log flush reason
+        let flushReason = 'unknown';
+        if (messages.length >= batchConfig.maxBatchSize) {
+            flushReason = 'MAX_SIZE_REACHED (1000 records)';
+        } else if (this.currentBatchSize >= MIN_RECORDS_FOR_TIMEOUT && timeSinceLastMessage >= SMART_TIMEOUT_MS) {
+            flushReason = `SMART_TIMEOUT (${timeSinceLastMessage}ms since last message)`;
+        } else if (timeSinceBatchStart >= FALLBACK_TIMEOUT_MS) {
+            flushReason = `FALLBACK_TIMEOUT (${timeSinceBatchStart}ms since batch start)`;
+        }
+
+        logger.info('Smart batch: Flushing batch', {
             batchSize: messages.length,
-            queueSize: stats.mainQueue.size,
+            flushReason,
+            queueRemaining: stats.mainQueue.size - messages.length,
         });
+
+        // Reset batch tracking
+        this.lastMessageTime = 0;
+        this.currentBatchSize = 0;
+        this.batchStartTime = 0;
 
         // Create batch object
         const batch = queueService.createBatch(

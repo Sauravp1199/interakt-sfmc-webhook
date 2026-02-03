@@ -40,18 +40,11 @@ async function executeSoapRequest(
   const soapEndpoint = `${baseUrl}/Service.asmx`;
 
   try {
-    // Log request details
-    logger.info('========== SFMC SOAP REQUEST ==========');
-    logger.info(`Operation: ${operation}`);
-    logger.info(`Endpoint: ${soapEndpoint}`);
-    logger.info(`Retry Count: ${retryCount}`);
-    logger.info(`Request Headers: ${JSON.stringify({
-      'Content-Type': 'text/xml; charset=utf-8',
-      'SOAPAction': operation,
-    })}`);
-    logger.info('Request Body (SOAP XML):');
-    console.log(soapEnvelope);
-    logger.info('========================================');
+    logger.info('SOAP request sent', {
+      operation,
+      endpoint: soapEndpoint,
+      retryCount
+    });
 
     const response = await axios.post(soapEndpoint, soapEnvelope, {
       headers: {
@@ -61,21 +54,12 @@ async function executeSoapRequest(
       timeout: 30000, // 30 second timeout
     });
 
-    // Log response details
-    logger.info('========== SFMC SOAP RESPONSE ==========');
-    logger.info(`Status: ${response.status} ${response.statusText}`);
-    logger.info('Response Body (SOAP XML):');
-    console.log(response.data);
-    logger.info('=========================================');
-
     const parsedResponse = await parseSoapResponse(response.data);
 
-    logger.info(`Parsed SOAP Response: ${JSON.stringify({
+    logger.info('SOAP response received', {
       status: parsedResponse.status,
-      statusCode: parsedResponse.statusCode,
-      statusMessage: parsedResponse.statusMessage,
-      requestId: parsedResponse.requestId,
-    })}`);
+      statusCode: parsedResponse.statusCode
+    });
 
     return parsedResponse;
   } catch (error) {
@@ -101,15 +85,11 @@ async function executeSoapRequest(
 
     // Log and re-throw non-retryable errors
     if (axios.isAxiosError(error)) {
-      logger.error('========== SFMC SOAP ERROR ==========');
-      logger.error(`Operation: ${operation}`);
-      logger.error(`Endpoint: ${soapEndpoint}`);
-      logger.error(`Status: ${error.response?.status} ${error.response?.statusText}`);
-      logger.error('Error Response Body:');
-      console.error(typeof error.response?.data === 'string'
-        ? error.response.data
-        : JSON.stringify(error.response?.data));
-      logger.error('======================================');
+      logger.error('SOAP request failed', {
+        operation,
+        status: error.response?.status,
+        message: error.message
+      });
 
       // Try to parse error response if available
       if (error.response?.data) {

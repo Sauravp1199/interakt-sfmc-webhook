@@ -9,6 +9,7 @@ interface TokenCache {
   accessToken: string;
   expiresAt: number;
   soapInstanceUrl: string;
+  restInstanceUrl: string;
 }
 
 /**
@@ -64,7 +65,7 @@ async function fetchNewToken(): Promise<TokenCache> {
       }
     );
 
-    const { access_token, expires_in, soap_instance_url } = response.data;
+    const { access_token, expires_in, soap_instance_url, rest_instance_url } = response.data;
 
     // Calculate expiry time (current time + expires_in seconds)
     const expiresAt = Date.now() + expires_in * 1000;
@@ -73,6 +74,7 @@ async function fetchNewToken(): Promise<TokenCache> {
       accessToken: access_token,
       expiresAt,
       soapInstanceUrl: soap_instance_url || config.sfmc.soapBaseUrl,
+      restInstanceUrl: rest_instance_url || config.sfmc.restBaseUrl || 'https://mc72wv4hqz48m1slvbncl40nnlv4.rest.marketingcloudapis.com',
     };
 
     logger.info('SFMC token obtained successfully', {
@@ -128,6 +130,13 @@ export async function getAccessToken(): Promise<string> {
  */
 export function getSoapInstanceUrl(): string {
   return tokenCache?.soapInstanceUrl || config.sfmc.soapBaseUrl;
+}
+
+/**
+ * Get REST instance URL (from cache or config)
+ */
+export function getRestInstanceUrl(): string {
+  return tokenCache?.restInstanceUrl || config.sfmc.restBaseUrl;
 }
 
 /**

@@ -2,13 +2,19 @@ import { Router, Request, Response } from 'express';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 import { validateEventPayload, ValidationError } from '../utils/validator';
-import { insertToDataExtension } from '../services/sfmcSoap';
+import { insertToDataExtension } from '../services/sfmcRest';
 
 const router = Router();
 
 /**
  * POST /event
  * Receive event payload and insert into SFMC Data Extension
+ * 
+ * SIGNATURE VALIDATION:
+ * Signature verification is handled by signatureAuthMiddleware in src/middleware/signature-auth.ts
+ * This middleware validates the Interakt-Signature header before the request reaches this handler
+ * 
+ * Therefore, if we reach this point, the signature is already verified as valid
  */
 router.post('/', async (req: Request, res: Response) => {
   const startTime = Date.now();
@@ -17,6 +23,9 @@ router.post('/', async (req: Request, res: Response) => {
   logger.info('Event received', { requestId });
 
   try {
+    // NOTE: Signature verification is already done by signatureAuthMiddleware
+    // No need to check signature here - it's already validated
+
     // Validate request payload
     const payload = validateEventPayload(req.body);
 
@@ -73,7 +82,7 @@ router.post('/', async (req: Request, res: Response) => {
         requestId: soapResponse.requestId,
         overallStatus: soapResponse.overallStatus,
         processingTime,
-        rawSoapResponse: config.nodeEnv === 'development' ? soapResponse.rawSoapResponse : undefined,
+        rawResponse: config.nodeEnv === 'development' ? soapResponse.rawResponse : undefined,
       });
     }
   } catch (error) {

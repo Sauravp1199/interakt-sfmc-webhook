@@ -15,7 +15,6 @@
 
 require('dotenv').config();
 const express = require('express');
-const bodyParser = require('body-parser');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { handleWebhook, initializeHandler } = require('./lib/webhook-handler');
@@ -28,6 +27,11 @@ const logger = require('./utils/logger');
 const app = express();
 const PORT = process.env.PORT || 1112;
 
+// Shared signature constants (aligns with TypeScript middleware)
+const SIGNATURE_HEADER = 'signature';
+// Fallback to the same hardcoded key used in src/middleware/signature-auth.ts so both runtimes behave consistently
+const SECRET_KEY_FALLBACK = 'VGRHLVdwcHBjZTRud291c1NINDlFS1dnVWstbzNhQU5Rdy1nNzg5cnBuMDo=';
+
 // Initialize webhook handler (sets up queue)
 initializeHandler();
 
@@ -36,7 +40,15 @@ startAutoClearTimer();
 
 // Security middleware
 app.use(helmet());
-app.use(bodyParser.json({ limit: '10mb' }));
+
+// Use express.json with verify callback to capture raw body for signature verification
+app.use(express.json({ 
+    limit: '10mb',
+    verify: (req, res, buf, encoding) => {
+        // Save raw body as Buffer for signature verification
+        req.rawBody = buf.toString('utf8');
+    }
+}));
 
 // Trust proxy (required for Heroku/reverse proxy)
 app.set('trust proxy', 1);
@@ -236,8 +248,50 @@ app.post('/webhook/interakt', async (req, res) => {
     const requestId = req.headers['x-request-id'] || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     try {
+        // Transform legacy Format 1 payload to Format 2 if needed
+        let payload = req.body;
+        const { customer, message, event } = payload;
+
+        // Check if this is Format 1 (has customer/message/event at root)
+        if ((customer || message || event) && !payload.type) {
+            // Transform Format 1 to Format 2
+            logger.debug('Transforming Format 1 payload to Format 2');
+
+            const transformedMessage = { ...message } || {};
+            if (event) {
+                const existingMetaData = transformedMessage.meta_data || {};
+                transformedMessage.meta_data = {
+                    ...existingMetaData,
+                    ...event
+                };
+            }
+
+            // Detect type
+            let detectedType = 'message_api_clicked';
+            if (event?.click_type) {
+                detectedType = 'message_api_clicked';
+            } else if (message?.message_status) {
+                const status = String(message.message_status).toLowerCase();
+                if (status === 'sent') detectedType = 'message_api_sent';
+                else if (status === 'delivered') detectedType = 'message_api_delivered';
+                else if (status === 'read') detectedType = 'message_api_read';
+                else if (status === 'failed') detectedType = 'message_api_failed';
+                else if (status === 'received') detectedType = 'message_received';
+            }
+
+            payload = {
+                version: '1.0',
+                timestamp: payload.timestamp || new Date().toISOString(),
+                type: detectedType,
+                data: {
+                    customer,
+                    message: transformedMessage
+                }
+            };
+        }
+
         // Quick validation
-        const { type, data, timestamp } = req.body;
+        const { type, data, timestamp } = payload;
 
         if (!type || !data) {
             logger.warn('Invalid webhook payload - missing type or data', { requestId });
@@ -248,24 +302,53 @@ app.post('/webhook/interakt', async (req, res) => {
             });
         }
 
-        // Fast signature verification
-        const signature = req.headers['x-interakt-signature'];
-        const secret = process.env.LOCAL_INTERAKT_SECRET || process.env.INTERAKT_SECRET;
+        // Enforce signature validation (always required)
+        const signature = req.headers[SIGNATURE_HEADER];
+        
+        // Get environment-specific secret (LOCAL or PROD)
+        const host = req.get('host');
+        let secret;
+        if (host && (host.includes('localhost') || host.includes('127.0.0.1'))) {
+            secret = process.env.LOCAL_WEBHOOK_SIGNATURE || SECRET_KEY_FALLBACK;
+        } else {
+            secret = process.env.PROD_WEBHOOK_SIGNATURE || process.env.LOCAL_WEBHOOK_SIGNATURE || SECRET_KEY_FALLBACK;
+        }
 
-        if (secret && signature) {
-            const crypto = require('crypto');
-            const providedSig = signature.startsWith('sha256=') ? signature.substring(7) : signature;
-            const hmac = crypto.createHmac('sha256', secret);
-            const digest = hmac.update(JSON.stringify(req.body)).digest('hex');
+        if (!signature) {
+            logger.warn('Missing signature header', { requestId });
+            return res.status(401).json({
+                success: false,
+                error: `Missing ${SIGNATURE_HEADER} header`,
+                requestId
+            });
+        }
 
-            if (digest !== providedSig) {
-                logger.error('Invalid signature', { requestId });
-                return res.status(401).json({
-                    success: false,
-                    error: 'Invalid signature',
-                    requestId
-                });
-            }
+        if (!secret) {
+            logger.error('No signature secret configured', { requestId });
+            return res.status(503).json({
+                success: false,
+                error: 'Signature validation not configured',
+                requestId
+            });
+        }
+
+        // SIMPLE STRING MATCHING (not HMAC-SHA256)
+        const expectedSignature = `sha256=${secret}`;
+        const isValidSignature = signature === expectedSignature;
+
+        logger.debug('Signature verification', { 
+            received: signature.substring(0, 20) + '...',
+            expected: expectedSignature.substring(0, 20) + '...',
+            match: isValidSignature
+        });
+
+        if (!isValidSignature) {
+            logger.error('Invalid signature', { requestId });
+            return res.status(401).json({
+                success: false,
+                error: 'Invalid signature',
+                requestId
+            });
         }
 
         // Quick idempotency check
@@ -301,7 +384,8 @@ app.post('/webhook/interakt', async (req, res) => {
         setImmediate(async () => {
             try {
                 // Skip idempotency check since we already verified and marked as processed above
-                await handleWebhook(req.body, req.headers, { skipIdempotencyCheck: true });
+                // Pass the transformed payload to ensure it's in the correct format
+                await handleWebhook(payload, req.headers, { skipIdempotencyCheck: true });
                 logger.info('Background SFMC processing completed', { requestId, type });
             } catch (bgError) {
                 logger.error('Background SFMC processing failed', {
@@ -374,29 +458,11 @@ const server = app.listen(PORT, () => {
     logger.info('Server started', {
         port: PORT,
         environment: process.env.NODE_ENV || 'development',
-        nodeVersion: process.version
+        nodeVersion: process.version,
+        sfmcAuthUrl: process.env.SFMC_AUTH_BASE_URL ? '[SET]' : '[NOT SET]',
+        sfmcRestUrl: process.env.SFMC_REST_BASE_URL ? '[SET]' : '[NOT SET]',
+        deCustomerKey: process.env.SFMC_DE_CUSTOMER_KEY ? '[SET]' : '[NOT SET]'
     });
-
-    console.log('\n========================================');
-    console.log('  Interakt SFMC Webhook Server v2.0');
-    console.log('========================================');
-    console.log(`  Port:        ${PORT}`);
-    console.log(`  Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`  Node:        ${process.version}`);
-    console.log('========================================');
-    console.log('  Configuration:');
-    console.log(`  - SFMC Auth URL:    ${process.env.SFMC_AUTH_BASE_URL ? '[SET]' : '[NOT SET]'}`);
-    console.log(`  - SFMC REST URL:    ${process.env.SFMC_REST_BASE_URL ? '[SET]' : '[NOT SET]'}`);
-    console.log(`  - DE Customer Key:  ${process.env.SFMC_DE_CUSTOMER_KEY ? '[SET]' : '[NOT SET]'}`);
-    console.log(`  - Queue Batch Size: ${process.env.QUEUE_BATCH_SIZE || 200}`);
-    console.log('========================================');
-    console.log('  Endpoints:');
-    console.log('  - GET  /               Service info');
-    console.log('  - GET  /health         Health check');
-    console.log('  - GET  /stats          Statistics');
-    console.log('  - POST /webhook/interakt  Webhook receiver');
-    console.log('========================================');
-    console.log('  Ready to receive webhooks\n');
 });
 
 // =============================================================================

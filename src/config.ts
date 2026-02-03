@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { logger } from './utils/logger';
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ export const config = {
   sfmc: {
     authBaseUrl: process.env.SFMC_AUTH_BASE_URL || 'https://mc72wv4hqz48m1slvbncl40nnlv4.auth.marketingcloudapis.com',
     soapBaseUrl: process.env.SFMC_SOAP_BASE_URL || 'https://mc72wv4hqz48m1slvbncl40nnlv4.soap.marketingcloudapis.com',
+    restBaseUrl: process.env.SFMC_REST_BASE_URL || 'https://mc72wv4hqz48m1slvbncl40nnlv4.rest.marketingcloudapis.com',
     clientId: process.env.SFMC_CLIENT_ID || '',
     clientSecret: process.env.SFMC_CLIENT_SECRET || '',
     accountId: process.env.SFMC_ACCOUNT_ID || '',
@@ -98,16 +100,14 @@ export function validateConfig(): void {
   const missing = required.filter((r) => !r.value);
 
   if (missing.length > 0) {
-    console.warn(
-      `Warning: Missing environment variables: ${missing.map((m) => m.key).join(', ')}`
-    );
+    logger.warn(`Missing environment variables: ${missing.map((m) => m.key).join(', ')}`);
   }
 
   // Check for local credentials
   if (!config.credentials.local.adminKey) {
-    console.warn('Warning: LOCAL_ADMIN_KEY not configured');
+    logger.warn('LOCAL_ADMIN_KEY not configured');
   }
   if (!config.credentials.local.interaktSecret) {
-    console.warn('Warning: LOCAL_INTERAKT_SECRET not configured');
+    logger.warn('LOCAL_INTERAKT_SECRET not configured');
   }
 }

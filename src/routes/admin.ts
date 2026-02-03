@@ -1,45 +1,19 @@
 import { Router, Request, Response } from 'express';
-import { config, getCredentials, isLocalhost } from '../config';
+import { config, isLocalhost } from '../config';
 import { logger } from '../utils/logger';
 import { clearTokenCache } from '../services/sfmcAuth';
 
 const router = Router();
 
 /**
- * Admin authentication middleware
- * Uses environment-specific admin key based on request origin
- */
-function requireAdminAuth(req: Request, res: Response, next: () => void): void {
-  const providedAdminKey = req.headers['x-admin-key'] as string;
-  const host = req.headers.host as string | undefined;
-  const credentials = getCredentials(host);
-  const envType = isLocalhost(host) ? 'LOCAL' : 'PROD';
-
-  if (!credentials.adminKey) {
-    res.status(503).json({
-      error: `Admin functionality not configured for ${envType} environment`,
-      environment: envType,
-    });
-    return;
-  }
-
-  if (providedAdminKey !== credentials.adminKey) {
-    logger.warn('Unauthorized admin access attempt', { ip: req.ip, envType });
-    res.status(401).json({
-      error: 'Unauthorized',
-      environment: envType,
-    });
-    return;
-  }
-
-  next();
-}
-
-/**
  * POST /admin/clear-cache
  * Clear SFMC token cache
+ * 
+ * SIGNATURE VALIDATION:
+ * Signature verification is handled by signatureAuthMiddleware in src/middleware/signature-auth.ts
+ * This middleware validates the Interakt-Signature header before the request reaches this handler
  */
-router.post('/clear-cache', requireAdminAuth, (req: Request, res: Response) => {
+router.post('/clear-cache', (req: Request, res: Response) => {
   const host = req.headers.host as string | undefined;
   const envType = isLocalhost(host) ? 'LOCAL' : 'PROD';
 
@@ -57,10 +31,15 @@ router.post('/clear-cache', requireAdminAuth, (req: Request, res: Response) => {
 /**
  * GET /admin/config
  * Get non-sensitive configuration (for debugging)
+ * 
+ * SIGNATURE VALIDATION:
+ * Signature verification is handled by signatureAuthMiddleware in src/middleware/signature-auth.ts
+ * This middleware validates the Interakt-Signature header before the request reaches this handler
  */
-router.get('/config', requireAdminAuth, (req: Request, res: Response) => {
+router.get('/config', (req: Request, res: Response) => {
   const host = req.headers.host as string | undefined;
   const envType = isLocalhost(host) ? 'LOCAL' : 'PROD';
+  const { getCredentials } = require('../config');
   const credentials = getCredentials(host);
 
   res.status(200).json({

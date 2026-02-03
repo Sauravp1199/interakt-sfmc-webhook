@@ -1,460 +1,230 @@
-# Interakt to Salesforce Marketing Cloud Webhook Integration
+# Interakt SFMC Webhook Integration
 
-A production-ready **TypeScript** webhook service that bridges **Interakt** (WhatsApp Business Platform) with **Salesforce Marketing Cloud (SFMC)**. This service receives real-time webhooks from Interakt and event payloads, transforming and forwarding the data directly to SFMC Data Extensions via SOAP API.
-
-## Table of Contents
-
-- [Features](#features)
-- [Architecture](#architecture)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [API Endpoints](#api-endpoints)
-- [Testing with cURL](#testing-with-curl)
-- [SFMC Data Extensions Setup](#sfmc-data-extensions-setup)
-- [Webhook Events](#webhook-events)
-- [Deployment](#deployment)
-- [Project Structure](#project-structure)
-- [Security](#security)
-- [Troubleshooting](#troubleshooting)
+Production-ready Node.js webhook receiver that integrates Interakt (WhatsApp messaging platform) with Salesforce Marketing Cloud (SFMC) Data Extensions.
 
 ## Features
 
-- **TypeScript**: Fully typed codebase for better maintainability
-- **Direct SFMC Integration**: No local database - transforms and forwards data directly to SFMC
-- **Dual Endpoints**:
-  - `/event` - For direct API event payloads
-  - `/webhook/interakt` - For Interakt webhook events
-- **SFMC SOAP API**: Uses CreateRequest DataExtensionObject for data insertion
-- **Token Caching**: OAuth tokens cached with automatic refresh (60 seconds before expiry)
-- **Concurrency Safe**: Token refresh lock prevents multiple simultaneous refreshes
-- **Retry Logic**: Exponential backoff retry (max 2 retries) for SOAP calls
-- **Request Validation**: Validates all required fields before processing
-- **Security**: HMAC-SHA256 signature verification, Helmet headers, rate limiting
-- **Comprehensive Logging**: Structured logging with configurable levels
+✅ **Real-time Data Sync** - Webhook events streamed to SFMC immediately
+✅ **15 Webhook Types** - Message status, interactions, account events, template events
+✅ **Batch Processing** - Intelligent batching (1000 records, 3-second smart timeout)
+✅ **Rate Limiting** - 2500 req/min, 50 concurrent with automatic backoff
+✅ **Error Handling** - Automatic retry with exponential backoff (max 5 retries)
+✅ **SFMC UPSERT** - Unique `event_id` prevents duplicates
+✅ **Signature Verification** - HMAC-SHA256 validation on all webhooks
+✅ **Comprehensive Logging** - Separate logs for requests, errors, and debugging
+✅ **Health Monitoring** - Real-time health check endpoint
+✅ **Connection Pooling** - HTTP Keep-Alive for performance
 
-## Architecture
+## Quick Start
 
-```
-+------------------+                      +----------------------------------+
-|   Your Service   |   POST /event        |                                  |
-|  (API Response)  | ------------------> |   Interakt-SFMC Webhook Server   |
-+------------------+                      |                                  |
-                                          |   1. Validate Request            |
-+------------------+   POST /webhook      |   2. Verify Signature (webhook)  |
-|    Interakt      | ------------------> |   3. Get/Refresh SFMC Token      |
-|   (WhatsApp)     |                      |   4. Build SOAP XML              |
-+------------------+                      |   5. Send to SFMC (with retry)   |
-                                          |   6. Parse Response              |
-                                          |   7. Return Result               |
-                                          +----------------+-----------------+
-                                                           |
-                                                           | SOAP API
-                                                           v
-                                          +----------------------------------+
-                                          |  Salesforce Marketing Cloud      |
-                                          |                                  |
-                                          |  Data Extensions:                |
-                                          |  - Event DE (for /event)         |
-                                          |  - Messages DE                   |
-                                          |  - Button Clicks DE              |
-                                          |  - Incoming Messages DE          |
-                                          |  - Workflow Responses DE         |
-                                          +----------------------------------+
-```
+### Prerequisites
+- Node.js 14+
+- npm or yarn
+- SFMC account with REST API credentials
+- Interakt account with webhook access
 
-## Prerequisites
-
-- **Node.js** 18.x or higher
-- **npm** 9.0.0 or higher
-- **Salesforce Marketing Cloud** account with:
-  - API Integration (Server-to-Server)
-  - Data Extensions created
-- **Interakt Account** (optional, for webhook integration)
-
-## Installation
-
-### 1. Clone the repository
+### Installation
 
 ```bash
-git clone <repository-url>
+git clone <repo-url>
 cd interakt-sfmc-webhook
-```
-
-### 2. Install dependencies
-
-```bash
 npm install
-```
-
-### 3. Configure environment variables
-
-```bash
 cp .env.example .env
-# Edit .env with your actual credentials
+# Edit .env with your credentials
+nano .env
 ```
 
-### 4. Build and start
+### Environment Variables
 
 ```bash
-# Development (with auto-reload)
-npm run dev
-
-# Production build
-npm run build
-npm start
-```
-
-The server starts on `http://localhost:1112` (or the port specified in PORT env var).
-
-## Configuration
-
-Create a `.env` file with the following variables:
-
-```bash
-# Server Configuration
-NODE_ENV=production
-PORT=1112
-
-# Interakt Configuration (for webhook signature verification)
-INTERAKT_SECRET=your_webhook_secret_key_here
-
-# Salesforce Marketing Cloud Configuration
-SFMC_AUTH_BASE_URL=https://mc72wv4hqz48m1slvbncl40nnlv4.auth.marketingcloudapis.com
-SFMC_SOAP_BASE_URL=https://mc72wv4hqz48m1slvbncl40nnlv4.soap.marketingcloudapis.com
+# SFMC
+SFMC_AUTH_BASE_URL=https://your-instance.auth.marketingcloudapis.com
+SFMC_REST_BASE_URL=https://your-instance.rest.marketingcloudapis.com
 SFMC_CLIENT_ID=your_client_id
 SFMC_CLIENT_SECRET=your_client_secret
 SFMC_ACCOUNT_ID=your_account_id
+SFMC_DE_CUSTOMER_KEY=your-data-extension-key
 
-# Data Extension Customer Keys
-SFMC_DE_CUSTOMER_KEY=402A0395-7B93-4866-AF97-530424622A9F  # For /event endpoint
-DE_MESSAGES=YOUR_MESSAGES_DE_CUSTOMER_KEY
-DE_BUTTON_CLICKS=YOUR_BUTTON_CLICKS_DE_CUSTOMER_KEY
-DE_INCOMING_MESSAGES=YOUR_INCOMING_MESSAGES_DE_CUSTOMER_KEY
-DE_WORKFLOW_RESPONSES=YOUR_WORKFLOW_RESPONSES_DE_CUSTOMER_KEY
+# Webhook Signatures (dev/prod)
+LOCAL_INTERAKT_SECRET=your-dev-secret
+PROD_INTERAKT_SECRET=your-prod-secret
 
-# Admin Configuration (Optional)
-ADMIN_KEY=your_secure_random_admin_key
-
-# Logging (ERROR, WARN, INFO, DEBUG)
+# Server
+PORT=1112
+NODE_ENV=development
 LOG_LEVEL=info
+ENABLE_FILE_LOGGING=true
+```
+
+### Running
+
+```bash
+npm start                           # Production
+NODE_ENV=development npm start      # Development
+ENABLE_FILE_LOGGING=true npm start  # With logging
 ```
 
 ## API Endpoints
 
-| Method | Endpoint              | Description                          | Authentication    |
-|--------|-----------------------|--------------------------------------|-------------------|
-| GET    | `/`                   | Service info and available endpoints | None              |
-| GET    | `/health`             | Health check with system metrics     | None              |
-| GET    | `/stats`              | Request statistics                   | None              |
-| POST   | `/event`              | Direct event payload receiver        | None              |
-| POST   | `/webhook/interakt`   | Interakt webhook receiver            | HMAC Signature    |
-| POST   | `/admin/clear-cache`  | Clear SFMC token cache               | Admin Key Header  |
-| GET    | `/admin/config`       | View non-sensitive config            | Admin Key Header  |
+### Webhook Receiver
+**POST** `/webhook/interakt`
 
-### POST /event
+Receives Interakt webhook events. Requires HMAC-SHA256 signature validation.
 
-Receives event payloads and inserts them into SFMC Data Extension.
+**Headers**: `Content-Type: application/json`, `x-interakt-signature: sha256=<signature>`
 
-**Request Body:**
-```json
-{
-  "result": false,
-  "message": "Test done",
-  "id": "36353-uyw7827",
-  "apiType": "no_header",
-  "timestamp": "2026-01-06T13:57:26.950Z",
-  "phoneNumber": "7211111111",
-  "templateName": "send_templates_noheader_test"
-}
-```
+### Health Check
+**GET** `/health`
 
-**Success Response (200):**
-```json
-{
-  "status": "OK",
-  "statusMessage": "Created DataExtensionObject",
-  "requestId": "79200f7f-046a-4a6e-9041-4baa222e9919",
-  "overallStatus": "OK",
-  "processingTime": 234
-}
-```
+Returns system health status and token validity.
 
-**Error Response (400/500):**
-```json
-{
-  "status": "ERROR",
-  "statusMessage": "Missing required field: id",
-  "field": "id",
-  "code": "VALIDATION_ERROR",
-  "processingTime": 5
-}
-```
+### Admin Endpoints
+- **POST** `/admin/logs/clear` - Clear all log files
+- **GET** `/admin/logs/:type` - Get logs (combined, error, debug, debug-requests)
+- **GET** `/admin/status` - Detailed system status
 
-## Testing with cURL
+## Webhook Types
 
-### Test /event endpoint
+**Message Events**: `message_api_sent`, `message_api_delivered`, `message_api_read`, `message_api_failed`, `message_api_clicked`, `message_received`
 
-```bash
-curl -X POST http://localhost:1112/event \
-  -H "Content-Type: application/json" \
-  -d '{
-    "result": false,
-    "message": "Test done",
-    "id": "36353-uyw7827",
-    "apiType": "no_header",
-    "timestamp": "2026-01-06T13:57:26.950Z",
-    "phoneNumber": "7211111111",
-    "templateName": "send_templates_noheader_test"
-  }'
-```
+**Workflow**: `workflow_response_update`
 
-### Test Health Check
+**Account Events**: `account_alerts`, `account_update`, `account_review_update`, `business_capability_update`, `phone_number_quality_update`
+
+**Template Events**: `template_performance_metrics`, `message_template_status_update`
+
+## Data Mapping
+
+Each webhook is flattened into 100+ fields:
+- **Core**: `event_id` (primary key), `timestamp`, `type`, `version`
+- **Customer** (30+): Customer UUID, phone number, traits
+- **Message** (40+): Message UUID, delivery status, metadata
+- **Full Payload**: Complete webhook JSON
+
+## Configuration
+
+| Setting | Default | Purpose |
+|---------|---------|---------|
+| Batch Size | 1000 | Max records per batch |
+| Smart Timeout | 3s | Wait for 2+ records |
+| Fallback Timeout | 30s | Absolute timeout |
+| Rate Limit | 2500 req/min | SFMC API limit |
+| Max Concurrent | 50 | Concurrent requests |
+| Max Retries | 5 | Exponential backoff |
+
+## Logging
+
+**Log Files**:
+- `logs/combined.log` - All logs (recommended)
+- `logs/error.log` - Errors only
+- `logs/debug.log` - Debug messages
+- `logs/debug-requests.log` - Full request/response bodies
+
+**Log Rotation**: Automatic at 10MB with timestamped backups
+
+## Testing
 
 ```bash
+# Health check
 curl http://localhost:1112/health
-```
 
-### Test Webhook (without signature)
-
-```bash
+# Sample webhook (calculate signature)
 curl -X POST http://localhost:1112/webhook/interakt \
   -H "Content-Type: application/json" \
-  -d '{
-    "type": "message_api_sent",
-    "timestamp": "2026-01-13T10:30:00.000Z",
-    "data": {
-      "customer": {
-        "id": "cust_12345",
-        "phone_number": "919876543210",
-        "traits": { "name": "John Doe" }
-      },
-      "message": {
-        "id": "msg_abc123",
-        "received_at_utc": "2026-01-13T10:30:00.000Z",
-        "campaign_id": "camp_001"
-      }
-    }
-  }'
+  -H "x-interakt-signature: sha256=<signature>" \
+  -d '{...}'
+
+# View logs
+tail -f logs/combined.log
+tail -f logs/debug-requests.log
 ```
 
-### Clear Token Cache (Admin)
+## Troubleshooting
 
-```bash
-curl -X POST http://localhost:1112/admin/clear-cache \
-  -H "x-admin-key: your_secure_random_admin_key"
-```
+| Issue | Solution |
+|-------|----------|
+| Webhook not received | Check webhook URL in Interakt console, verify PORT is accessible |
+| Records not in SFMC | Verify SFMC credentials, check Data Extension key, review logs/error.log |
+| High error rate | Check SFMC rate limit, verify network, review SFMC API status |
+| Authentication errors | Verify CLIENT_ID, CLIENT_SECRET, ACCOUNT_ID are correct |
 
-## SFMC Data Extensions Setup
+## Monitoring
 
-### Event Data Extension (for /event endpoint)
+**Health Endpoint**: `GET /health` - Token status, rate limiter status, uptime
 
-**Customer Key:** `402A0395-7B93-4866-AF97-530424622A9F` (or your custom key)
+**Metrics to Monitor**:
+- Webhook success rate (target: >99%)
+- Batch processing latency (target: <5s)
+- SFMC API errors (target: 0)
+- Rate limit usage (target: <80%)
 
-| Field Name    | Data Type | Length | Primary Key | Required |
-|---------------|-----------|--------|-------------|----------|
-| id            | Text      | 100    | Yes         | Yes      |
-| result        | Text      | 10     | No          | No       |
-| message       | Text      | 500    | No          | No       |
-| apiType       | Text      | 50     | No          | No       |
-| timestamp     | Text      | 50     | No          | No       |
-| phoneNumber   | Text      | 20     | No          | No       |
-| templateName  | Text      | 255    | No          | No       |
+## Production Checklist
 
-### Messages Data Extension
+- [ ] Set `NODE_ENV=production`
+- [ ] Set `LOG_LEVEL=warn` or `error`
+- [ ] Enable `ENABLE_FILE_LOGGING=true`
+- [ ] Configure both `LOCAL_` and `PROD_` secrets
+- [ ] Test with sample webhooks
+- [ ] Monitor for 24 hours
+- [ ] Set up log rotation/archiving
+- [ ] Configure alerting
+- [ ] Rotate webhook signatures quarterly
+- [ ] Use separate credentials for dev/prod
 
-| Field Name     | Data Type | Length | Primary Key | Required |
-|----------------|-----------|--------|-------------|----------|
-| MessageId      | Text      | 100    | Yes         | Yes      |
-| CustomerId     | Text      | 100    | No          | Yes      |
-| PhoneNumber    | Text      | 20     | No          | No       |
-| CustomerName   | Text      | 255    | No          | No       |
-| MessageStatus  | Text      | 20     | No          | Yes      |
-| ReceivedAt     | Text      | 50     | No          | No       |
-| DeliveredAt    | Text      | 50     | No          | No       |
-| SeenAt         | Text      | 50     | No          | No       |
-| CampaignId     | Text      | 100    | No          | No       |
-| TemplateName   | Text      | 255    | No          | No       |
-| CallbackData   | Text      | 500    | No          | No       |
-| MessageCost    | Text      | 20     | No          | No       |
-| FailureReason  | Text      | 500    | No          | No       |
-| ErrorCode      | Text      | 50     | No          | No       |
-| ProcessedAt    | Text      | 50     | No          | No       |
+## Performance Characteristics
 
-### Button Clicks Data Extension
+| Metric | Value |
+|--------|-------|
+| Webhook Latency | <100ms |
+| Batch Size | 1,000 records |
+| Batch Time | 2-5 seconds |
+| Rate Limit | 2,500 req/min |
+| Concurrent Requests | 50 max |
+| Token Refresh | Every 19 minutes |
 
-| Field Name     | Data Type | Length | Primary Key | Required |
-|----------------|-----------|--------|-------------|----------|
-| MessageId      | Text      | 100    | Yes         | Yes      |
-| CustomerId     | Text      | 100    | No          | Yes      |
-| PhoneNumber    | Text      | 20     | No          | No       |
-| CustomerName   | Text      | 255    | No          | No       |
-| ClickType      | Text      | 10     | No          | No       |
-| ButtonText     | Text      | 255    | No          | No       |
-| ButtonLink     | Text      | 500    | No          | No       |
-| ClickedAt      | Text      | 50     | No          | No       |
-| CallbackData   | Text      | 500    | No          | No       |
-| ProcessedAt    | Text      | 50     | No          | No       |
+## Architecture
 
-### Incoming Messages Data Extension
+See [APPLICATION_FLOW.md](APPLICATION_FLOW.md) for detailed architecture, data flow, and complete field mapping.
 
-| Field Name     | Data Type | Length | Primary Key | Required |
-|----------------|-----------|--------|-------------|----------|
-| MessageId      | Text      | 100    | Yes         | Yes      |
-| CustomerId     | Text      | 100    | No          | Yes      |
-| PhoneNumber    | Text      | 20     | No          | No       |
-| CustomerName   | Text      | 255    | No          | No       |
-| MessageType    | Text      | 50     | No          | No       |
-| MessageText    | Text      | 4000   | No          | No       |
-| MediaUrl       | Text      | 500    | No          | No       |
-| ReceivedAt     | Text      | 50     | No          | No       |
-| ProcessedAt    | Text      | 50     | No          | No       |
-
-### Workflow Responses Data Extension
-
-| Field Name     | Data Type | Length | Primary Key | Required |
-|----------------|-----------|--------|-------------|----------|
-| WorkflowId     | Text      | 100    | Yes         | Yes      |
-| CustomerId     | Text      | 100    | Yes         | Yes      |
-| StepNumber     | Text      | 10     | Yes         | Yes      |
-| PhoneNumber    | Text      | 20     | No          | No       |
-| CustomerName   | Text      | 255    | No          | No       |
-| Question       | Text      | 1000   | No          | No       |
-| Answer         | Text      | 1000   | No          | No       |
-| TraitName      | Text      | 100    | No          | No       |
-| AnsweredAt     | Text      | 50     | No          | No       |
-| ProcessedAt    | Text      | 50     | No          | No       |
-
-## Webhook Events
-
-The service handles the following Interakt webhook event types:
-
-| Event Type                  | Status     | Description                    | Target DE         |
-|-----------------------------|------------|--------------------------------|-------------------|
-| `message_api_sent`          | Sent       | API message sent               | Messages          |
-| `message_api_delivered`     | Delivered  | API message delivered          | Messages          |
-| `message_api_read`          | Read       | API message read               | Messages          |
-| `message_api_failed`        | Failed     | API message failed             | Messages          |
-| `message_campaign_sent`     | Sent       | Campaign message sent          | Messages          |
-| `message_campaign_delivered`| Delivered  | Campaign message delivered     | Messages          |
-| `message_campaign_read`     | Read       | Campaign message read          | Messages          |
-| `message_campaign_failed`   | Failed     | Campaign message failed        | Messages          |
-| `message_api_clicked`       | -          | Button click (QR or CTA)       | Button Clicks     |
-| `message_received`          | -          | Incoming customer message      | Incoming Messages |
-| `workflow_response_update`  | -          | Workflow Q&A response          | Workflow Responses|
-
-## Deployment
-
-### Heroku Deployment
-
-```bash
-# Create app
-heroku create your-app-name
-
-# Set environment variables
-heroku config:set NODE_ENV=production
-heroku config:set SFMC_CLIENT_ID=your_client_id
-heroku config:set SFMC_CLIENT_SECRET=your_client_secret
-heroku config:set SFMC_ACCOUNT_ID=your_account_id
-heroku config:set SFMC_DE_CUSTOMER_KEY=your_de_key
-# ... set other variables
-
-# Deploy
-git push heroku main
-```
-
-### Configure Interakt Webhook
-
-1. Go to **Interakt Dashboard** > **Settings** > **Developer Settings**
-2. Set **Webhook URL**: `https://your-app.herokuapp.com/webhook/interakt`
-3. Set **Secret Key**: Same as `INTERAKT_SECRET` in your .env
-4. Enable desired webhook events
-
-## Project Structure
+## File Structure
 
 ```
 interakt-sfmc-webhook/
-|-- src/
-|   |-- server.ts              # Express server entry point
-|   |-- config.ts              # Configuration loader
-|   |-- routes/
-|   |   |-- event.ts           # POST /event handler
-|   |   |-- webhook.ts         # POST /webhook/interakt handler
-|   |   |-- health.ts          # Health & stats endpoints
-|   |   +-- admin.ts           # Admin endpoints
-|   |-- services/
-|   |   |-- sfmcAuth.ts        # SFMC OAuth with token caching
-|   |   +-- sfmcSoap.ts        # SFMC SOAP API client
-|   +-- utils/
-|       |-- logger.ts          # Logging utility
-|       |-- validator.ts       # Request validation
-|       |-- soapBuilder.ts     # SOAP XML builder
-|       +-- soapParser.ts      # SOAP response parser
-|-- samples/                   # Sample payload files
-|-- postman/                   # Postman collection
-|-- dist/                      # Compiled JavaScript (after build)
-|-- package.json
-|-- tsconfig.json
-|-- .env.example
-+-- README.md
+├── lib/                   # Core application
+│   ├── sfmc-client.js    # SFMC API client
+│   ├── webhook-handler.js # Webhook processing
+│   ├── queue.js          # Queue management
+│   └── *.js              # Other utilities
+├── src/
+│   ├── routes/           # Express routes
+│   ├── services/         # Business logic
+│   ├── utils/            # Logging, validation
+│   └── config.ts         # Configuration
+├── utils/                # Global utilities
+│   └── logger.js         # Logging system
+├── logs/                 # Log files (runtime)
+├── package.json          # Dependencies
+├── .env.example          # Environment template
+├── README.md             # This file
+└── APPLICATION_FLOW.md   # Detailed architecture
 ```
 
 ## Security
 
-| Feature | Description |
-|---------|-------------|
-| HMAC-SHA256 Signature | Verifies Interakt webhook authenticity |
-| Helmet.js | Sets secure HTTP headers |
-| Rate Limiting | 100-200 requests/min per IP |
-| Token Caching | Secure in-memory token storage |
-| XML Escaping | Prevents XML injection in SOAP payloads |
-| Input Validation | Validates all required fields |
-| Timing-Safe Comparison | Prevents timing attacks on signature verification |
-
-## Troubleshooting
-
-### Common Issues
-
-| Issue | Solution |
-|-------|----------|
-| Token refresh failing | Check SFMC credentials (client_id, client_secret, account_id) |
-| SOAP errors | Verify Data Extension customer key and field names |
-| Validation errors | Check request body has all required fields |
-| Signature verification failed | Ensure INTERAKT_SECRET matches Interakt dashboard |
-| Rate limit exceeded | Reduce request frequency or increase limit |
-
-### Debug Mode
-
-```bash
-LOG_LEVEL=DEBUG npm run dev
-```
-
-### View SFMC Token Status
-
-```bash
-curl http://localhost:1112/health
-```
-
-Check the `sfmcToken` section in the response.
-
-## Dependencies
-
-| Package             | Purpose                              |
-|---------------------|--------------------------------------|
-| express             | Web framework                        |
-| axios               | HTTP client for SFMC API             |
-| helmet              | Security headers                     |
-| express-rate-limit  | Rate limiting                        |
-| xml2js              | XML parsing                          |
-| dotenv              | Environment variables                |
-| typescript          | TypeScript compiler                  |
-| ts-node-dev         | Development server with hot reload   |
+- HMAC-SHA256 signature verification on all requests
+- Secure token caching with automatic refresh
+- Environment-based credential separation
+- Input validation on all requests
+- Connection pooling with keep-alive
+- Rate limiting and request queuing
 
 ## License
 
-ISC
+Proprietary - Pidilite
 
-## References
+## Support
 
-- [Interakt Webhooks Documentation](https://www.interakt.shop/resource-center/interakts-webhooks/)
-- [SFMC SOAP API Documentation](https://developer.salesforce.com/docs/marketing/marketing-cloud/guide/web-service-guide.html)
+1. Check logs: `logs/debug-requests.log` for API calls, `logs/error.log` for errors
+2. Review [APPLICATION_FLOW.md](APPLICATION_FLOW.md) for complete architecture
+3. Verify SFMC credentials and Data Extension schema
+4. Contact: Dr Fixit Team

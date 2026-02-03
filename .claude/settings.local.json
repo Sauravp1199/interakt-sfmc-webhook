@@ -7,7 +7,9 @@
       "Bash(npm run build:*)",
       "Bash(npm install:*)",
       "Bash(timeout:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(perl -i -pe:*)",
+      "Bash(find:*)"
     ]
   }
 }

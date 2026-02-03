@@ -1,0 +1,403 @@
+{
+  "info": {
+    "_postman_id": "dbcc2b59-5959-492f-b3ec-058b854c6fcf",
+    "name": "Interakt-SFMC-Webhook-Final",
+    "description": "Production-ready Interakt to SFMC webhook integration API with complete request body handling for ALL webhook event types from Interakt's Webhooks.txt documentation",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "33199235",
+    "_collection_link": "https://go.postman.co/collection/33199235-dbcc2b59-5959-492f-b3ec-058b854c6fcf?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Health & Status",
+      "item": [
+        {
+          "name": "Service Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": ["{{baseUrl}}"],
+              "path": [""]
+            },
+            "description": "Get service information and available endpoints"
+          },
+          "response": []
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Health check with system metrics, uptime, and SFMC token status"
+          },
+          "response": []
+        },
+        {
+          "name": "Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["stats"]
+            },
+            "description": "Request statistics and success rates"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Webhook Events - Message API",
+      "item": [
+        {
+          "name": "message_api_sent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Signature",
+                "value": "{{signature}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"2022-06-03T05:43:33.237499\",\n  \"type\": \"message_api_sent\",\n  \"data\": {\n    \"customer\": {\n      \"id\": \"52918eb3-bd00-4331-a51d-c4dcffee48d6\",\n      \"channel_phone_number\": \"917003705584\",\n      \"traits\": {\n        \"name\": \"SKGG\",\n        \"amount\": 7000,\n        \"total_orders_count\": 0,\n        \"last_order_id\": null,\n        \"last_order_name\": null,\n        \"total_spent\": \"0.00\",\n        \"whatsapp_opted_in\": false,\n        \"created_at\": \"2021-06-23T06:46:11\",\n        \"User Id\": \"111\",\n        \"email\": \"xyz@gmail.com\"\n      }\n    },\n    \"message\": {\n      \"id\": \"dfc668a2-c06c-4e9a-a4fd-7b65bc1fdc84\",\n      \"chat_message_type\": \"PublicApiMessage\",\n      \"channel_failure_reason\": null,\n      \"message_status\": \"Sent\",\n      \"received_at_utc\": \"2022-06-03T05:43:33.133000\",\n      \"delivered_at_utc\": null,\n      \"seen_at_utc\": null,\n      \"campaign_id\": null,\n      \"is_template_message\": true,\n      \"raw_template\": \"{\\\"id\\\": \\\"281a5a78-f2b2-46c9-b9bb-d620d3b2894c\\\", \\\"created_at_utc\\\": \\\"2022-03-30T07:04:04.078\\\", \\\"modified_at_utc\\\": \\\"2022-03-31T05:41:09.61\\\", \\\"created_by_user_id\\\": \\\"37088e03-3633-4aa4-b4d8-99edbc56d4fc\\\", \\\"is_deleted\\\": false, \\\"name\\\": \\\"test_template_lp\\\", \\\"language\\\": \\\"en\\\", \\\"category\\\": \\\"ALERT_UPDATE\\\", \\\"header_format\\\": null, \\\"header\\\": null, \\\"header_handle\\\": null, \\\"header_handle_file_url\\\": null, \\\"header_handle_file_name\\\": null, \\\"header_text\\\": null, \\\"body\\\": \\\"Hi  {{1}} \\\\nWelcome to interakt, my name is  {{2}} . I hope your 14 day free trial was helpful. For any queries please reach to us.\\\", \\\"body_text\\\": \\\"[\\\\\\\"Clients\\\\\\\", \\\\\\\"Sender\\\\\\\"]\\\", \\\"footer\\\": \\\"Team interakt\\\", \\\"buttons\\\": \\\"[{\\\\\\\"type\\\\\\\": \\\\\\\"QUICK_REPLY\\\\\\\", \\\\\\\"text\\\\\\\": \\\\\\\"Thank you\\\\\\\"}, {\\\\\\\"type\\\\\\\": \\\\\\\"QUICK_REPLY\\\\\\\", \\\\\\\"text\\\\\\\": \\\\\\\"What is qralink?\\\\\\\"}, {\\\\\\\"type\\\\\\\": \\\\\\\"QUICK_REPLY\\\\\\\", \\\\\\\"text\\\\\\\": \\\\\\\"Speak to an agent\\\\\\\"}]\\\", \\\"button_text\\\": null, \\\"display_name\\\": \\\"Test template\\\", \\\"organization_id\\\": \\\"ba4308f1-a506-44d2-a8c3-17380216cf91\\\", \\\"approval_status\\\": \\\"APPROVED\\\", \\\"wa_template_id\\\": \\\"3224400424546364\\\", \\\"is_archived\\\": false}\",\n      \"channel_error_code\": null,\n      \"message_content_type\": \"Template\",\n      \"media_url\": null,\n      \"message\": \"[{\\\"type\\\": \\\"body\\\", \\\"parameters\\\": [{\\\"type\\\": \\\"text\\\", \\\"text\\\": \\\"Saandhy\\\"}, {\\\"type\\\": \\\"text\\\", \\\"text\\\": \\\"Varun\\\"}]}]\",\n      \"meta_data\": {\n        \"source\": \"PublicInterakt\",\n        \"source_data\": {\n          \"callback_data\": \"some text here\"\n        }\n      }\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/webhook/interakt",
+              "host": ["{{baseUrl}}"],
+              "path": ["webhook", "interakt"]
+            },
+            "description": "Webhook: Message sent successfully (complete request body with all fields)"
+          },
+          "response": []
+        },
+        {
+          "name": "message_api_delivered",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Signature", "value": "{{signature}}", "type": "text"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"2022-06-03T05:43:33.930227\",\n  \"type\": \"message_api_delivered\",\n  \"data\": {\n    \"customer\": {\n      \"id\": \"52918eb3-bd00-4331-a51d-c4dcffee48d6\",\n      \"channel_phone_number\": \"917003705584\",\n      \"traits\": {\"name\": \"SKGG\", \"amount\": 7000, \"total_orders_count\": 0, \"last_order_id\": null, \"last_order_name\": null, \"total_spent\": \"0.00\", \"whatsapp_opted_in\": false, \"created_at\": \"2021-06-23T06:46:11\", \"User Id\": \"111\", \"email\": \"xyz@gmail.com\"}\n    },\n    \"message\": {\n      \"id\": \"dfc668a2-c06c-4e9a-a4fd-7b65bc1fdc84\",\n      \"chat_message_type\": \"PublicApiMessage\",\n      \"channel_failure_reason\": null,\n      \"message_status\": \"Delivered\",\n      \"received_at_utc\": \"2022-06-03T05:43:33.133000\",\n      \"delivered_at_utc\": \"2022-06-03T05:43:33.848000\",\n      \"seen_at_utc\": null,\n      \"campaign_id\": null,\n      \"is_template_message\": true,\n      \"raw_template\": \"{\\\"id\\\": \\\"281a5a78-f2b2-46c9-b9bb-d620d3b2894c\\\", \\\"created_at_utc\\\": \\\"2022-03-30T07:04:04.078\\\", \\\"modified_at_utc\\\": \\\"2022-03-31T05:41:09.61\\\", \\\"created_by_user_id\\\": \\\"37088e03-3633-4aa4-b4d8-99edbc56d4fc\\\", \\\"is_deleted\\\": false, \\\"name\\\": \\\"test_template_lp\\\", \\\"language\\\": \\\"en\\\", \\\"category\\\": \\\"ALERT_UPDATE\\\", \\\"header_format\\\": null, \\\"header\\\": null, \\\"header_handle\\\": null, \\\"header_handle_file_url\\\": null, \\\"header_handle_file_name\\\": null, \\\"header_text\\\": null, \\\"body\\\": \\\"Hi  {{1}} \\\\nWelcome to interakt, my name is  {{2}} . I hope your 14 day free trial was helpful. For any queries please reach to us.\\\", \\\"body_text\\\": \\\"[\\\\\\\"Clients\\\\\\\", \\\\\\\"Sender\\\\\\\"]\\\", \\\"footer\\\": \\\"Team interakt\\\", \\\"buttons\\\": \\\"[{\\\\\\\"type\\\\\\\": \\\\\\\"QUICK_REPLY\\\\\\\", \\\\\\\"text\\\\\\\": \\\\\\\"Thank you\\\\\\\"}, {\\\\\\\"type\\\\\\\": \\\\\\\"QUICK_REPLY\\\\\\\", \\\\\\\"text\\\\\\\": \\\\\\\"What is qralink?\\\\\\\"}, {\\\\\\\"type\\\\\\\": \\\\\\\"QUICK_REPLY\\\\\\\", \\\\\\\"text\\\\\\\": \\\\\\\"Speak to an agent\\\\\\\"}]\\\", \\\"button_text\\\": null, \\\"display_name\\\": \\\"Test template\\\", \\\"organization_id\\\": \\\"ba4308f1-a506-44d2-a8c3-17380216cf91\\\", \\\"approval_status\\\": \\\"APPROVED\\\", \\\"wa_template_id\\\": \\\"3224400424546364\\\", \\\"is_archived\\\": false}\",\n      \"channel_error_code\": null,\n      \"message_content_type\": \"Template\",\n      \"media_url\": null,\n      \"message\": \"[{\\\"type\\\": \\\"body\\\", \\\"parameters\\\": [{\\\"type\\\": \\\"text\\\", \\\"text\\\": \\\"Saandhy\\\"}, {\\\"type\\\": \\\"text\\\", \\\"text\\\": \\\"Varun\\\"}]}]\",\n      \"meta_data\": {\"source\": \"PublicInterakt\", \"source_data\": {\"callback_data\": \"some text here\"}}\n    }\n  }\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/webhook/interakt", "host": ["{{baseUrl}}"], "path": ["webhook", "interakt"]},
+            "description": "Webhook: Message delivered (complete request body with all fields)"
+          },
+          "response": []
+        },
+        {
+          "name": "message_api_read",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Signature", "value": "{{signature}}", "type": "text"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"2022-06-03T05:43:33.930227\",\n  \"type\": \"message_api_read\",\n  \"data\": {\n    \"customer\": {\"id\": \"52918eb3-bd00-4331-a51d-c4dcffee48d6\", \"channel_phone_number\": \"917003705584\", \"traits\": {\"name\": \"SKGG\", \"amount\": 7000, \"total_orders_count\": 0, \"last_order_id\": null, \"last_order_name\": null, \"total_spent\": \"0.00\", \"whatsapp_opted_in\": false, \"created_at\": \"2021-06-23T06:46:11\", \"User Id\": \"111\", \"email\": \"xyz@gmail.com\"}},\n    \"message\": {\"id\": \"dfc668a2-c06c-4e9a-a4fd-7b65bc1fdc84\", \"chat_message_type\": \"PublicApiMessage\", \"channel_failure_reason\": null, \"message_status\": \"Read\", \"received_at_utc\": \"2022-06-03T05:43:33.133000\", \"delivered_at_utc\": \"2022-06-03T05:43:33.848000\", \"seen_at_utc\": \"2022-06-03T05:43:34.257000\", \"campaign_id\": null, \"is_template_message\": true, \"raw_template\": \"{}\", \"channel_error_code\": null, \"message_content_type\": \"Template\", \"media_url\": null, \"message\": \"[{\\\"type\\\": \\\"body\\\", \\\"parameters\\\": [{\\\"type\\\": \\\"text\\\", \\\"text\\\": \\\"Saandhy\\\"}, {\\\"type\\\": \\\"text\\\", \\\"text\\\": \\\"Varun\\\"}]}]\", \"meta_data\": {\"source\": \"PublicInterakt\", \"source_data\": {\"callback_data\": \"some text here\"}}}\n  }\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/webhook/interakt", "host": ["{{baseUrl}}"], "path": ["webhook", "interakt"]},
+            "description": "Webhook: Message read (complete request body with all fields)"
+          },
+          "response": []
+        },
+        {
+          "name": "message_api_failed",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Signature", "value": "{{signature}}", "type": "text"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"2022-06-03T05:56:10.699936\",\n  \"type\": \"message_api_failed\",\n  \"data\": {\n    \"customer\": {\"id\": \"82a5b5bc-5509-4225-a9e9-bbe4c150516b\", \"channel_phone_number\": \"919831\", \"traits\": {\"name\": \"\", \"whatsapp_opted_in\": true}},\n    \"message\": {\"id\": \"80b4b1f1-dc39-46dc-a133-bf09a12c3d4e\", \"chat_message_type\": \"PublicApiMessage\", \"channel_failure_reason\": \"Recipient is not a valid WhatsApp user\", \"message_status\": \"Failed\", \"received_at_utc\": \"2022-06-03T05:56:10.502000\", \"delivered_at_utc\": null, \"seen_at_utc\": null, \"campaign_id\": null, \"is_template_message\": true, \"raw_template\": \"{}\", \"channel_error_code\": \"1013\", \"message_content_type\": \"Template\", \"media_url\": null, \"message\": \"[{\\\"type\\\": \\\"body\\\", \\\"parameters\\\": [{\\\"type\\\": \\\"text\\\", \\\"text\\\": \\\"Saandhy\\\"}, {\\\"type\\\": \\\"text\\\", \\\"text\\\": \\\"Varun\\\"}]}]\", \"meta_data\": {\"source\": \"PublicInterakt\", \"source_data\": {\"callback_data\": \"some text here\"}}}\n  }\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/webhook/interakt", "host": ["{{baseUrl}}"], "path": ["webhook", "interakt"]},
+            "description": "Webhook: Message failed (complete request body with all fields)"
+          },
+          "response": []
+        },
+        {
+          "name": "message_api_clicked (Quick Reply)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Signature", "value": "{{signature}}", "type": "text"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"2024-06-10T08:38:08.837610\",\n  \"type\": \"message_api_clicked\",\n  \"data\": {\n    \"customer\": {\"id\": \"fe366bc2-14df-40f3-ab56-20f67f5c6694\", \"channel_phone_number\": \"917003705584\", \"phone_number\": \"7003705584\", \"country_code\": \"+91\", \"traits\": {\"name\": \"Saandhy Ganeriwala\", \"whatsapp_opted_in\": true}},\n    \"message\": {\"id\": \"f6f22110-9eab-4282-9b2c-673c3bbaa0fa\", \"chat_message_type\": \"PublicApiMessage\", \"channel_failure_reason\": null, \"message_status\": \"Read\", \"received_at_utc\": \"2024-06-10T08:37:46.309000\", \"delivered_at_utc\": \"2024-06-10T08:37:48.149000\", \"seen_at_utc\": \"2024-06-10T08:38:05.643000\", \"campaign_id\": null, \"is_template_message\": true, \"raw_template\": \"{}\", \"channel_error_code\": null, \"message_content_type\": \"Template\", \"media_url\": null, \"message\": \"[{\\\"type\\\": \\\"body\\\", \\\"parameters\\\": [{\\\"type\\\": \\\"text\\\", \\\"text\\\": \\\"body_variable_value_1\\\"}, {\\\"type\\\": \\\"text\\\", \\\"text\\\": \\\"body_variable_value_2\\\"}]}]\", \"meta_data\": {\"source\": \"PublicInterakt\", \"source_data\": {\"callback_data\": \"some text here123\"}, \"message_cost\": {\"whatsapp_cost\": \"0.03\", \"interakt_markup\": \"0.3\", \"actual_message_cost\": \"0.33\"}, \"click_type\": \"QR\", \"button_text\": \"Fill Feedback Form\", \"button_link\": \"\", \"click_timestamp\": \"2024-06-10 08:38:08.635664\", \"button_payload\": {\"payload\": {\"type\": \"QUICK_REPLY\", \"text\": \"Fill Feedback Form\"}}}}\n  }\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/webhook/interakt", "host": ["{{baseUrl}}"], "path": ["webhook", "interakt"]},
+            "description": "Webhook: Message clicked - Quick Reply (complete request body with all fields)"
+          },
+          "response": []
+        },
+        {
+          "name": "message_api_clicked (CTA)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Signature", "value": "{{signature}}", "type": "text"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer\": {\"id\": \"fe366bc2-14df-40f3-ab56-20f67f5c6694\", \"channel_phone_number\": \"917003705584\", \"phone_number\": \"7003705584\", \"country_code\": \"+91\", \"traits\": {\"name\": \"Saandhy Ganeriwala\", \"email\": \"test@gmail.com\", \"whatsapp_opted_in\": true}},\n  \"message\": {\"id\": \"c2e35816-f6cb-4893-8cd5-99d2f6060535\", \"chat_message_type\": \"PublicApiMessage\", \"channel_failure_reason\": null, \"message_status\": \"Read\", \"received_at_utc\": \"2024-06-10T08:47:19.352000\", \"delivered_at_utc\": \"2024-06-10T08:47:21.123000\", \"seen_at_utc\": \"2024-06-10T08:47:21.723000\", \"campaign_id\": null, \"is_template_message\": true, \"raw_template\": \"{}\", \"channel_error_code\": null, \"message_content_type\": \"Template\", \"media_url\": null, \"message\": \"[{\\\"type\\\": \\\"body\\\", \\\"parameters\\\": [{\\\"type\\\": \\\"text\\\", \\\"text\\\": \\\"body_variable_value_1\\\"}]}, {\\\"type\\\": \\\"button\\\", \\\"sub_type\\\": \\\"url\\\", \\\"index\\\": 0, \\\"parameters\\\": [{\\\"type\\\": \\\"text\\\", \\\"text\\\": \\\"token_here\\\"}]}]\", \"meta_data\": {\"source\": \"PublicInterakt\", \"source_data\": {\"callback_data\": \"some text here123\"}, \"message_cost\": {\"whatsapp_cost\": \"0.03\", \"interakt_markup\": \"0.3\", \"actual_message_cost\": \"0.33\"}}},\n  \"event\": {\"callbackData\": \"some text here123\", \"click_type\": \"CTA\", \"button_text\": \"Track Order\", \"button_link\": \"https://www.example.com/order\", \"click_timestamp\": \"2024-06-10 08:47:26.948896\"}\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/webhook/interakt", "host": ["{{baseUrl}}"], "path": ["webhook", "interakt"]},
+            "description": "Webhook: Message clicked - CTA Button (complete request body with all fields)"
+          },
+          "response": []
+        },
+        {
+          "name": "message_received",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Signature", "value": "{{signature}}", "type": "text"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"2022-06-03T05:57:57.496889\",\n  \"type\": \"message_received\",\n  \"data\": {\n    \"customer\": {\"id\": \"52918eb3-bd00-4331-a51d-c4dcffee48d6\", \"channel_phone_number\": \"917003705584\", \"traits\": {\"name\": \"SKGG\", \"amount\": 7000, \"total_orders_count\": 0, \"last_order_id\": null, \"last_order_name\": null, \"total_spent\": \"0.00\", \"whatsapp_opted_in\": false, \"created_at\": \"2021-06-23T06:46:11\", \"User Id\": \"111\", \"email\": \"xyz@gmail.com\"}},\n    \"message\": {\"id\": \"60076f05-da52-4dd1-b813-36223c1eded7\", \"chat_message_type\": \"CustomerMessage\", \"channel_failure_reason\": null, \"message_status\": \"Sent\", \"received_at_utc\": \"2022-06-03T05:57:57.359000\", \"delivered_at_utc\": null, \"seen_at_utc\": null, \"campaign_id\": null, \"is_template_message\": false, \"raw_template\": null, \"channel_error_code\": null, \"message_content_type\": \"Text\", \"media_url\": null, \"message\": \"Thank you\", \"meta_data\": {}}\n  }\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/webhook/interakt", "host": ["{{baseUrl}}"], "path": ["webhook", "interakt"]},
+            "description": "Webhook: Message received from customer (complete request body with all fields)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Webhook Events - Workflow",
+      "item": [
+        {
+          "name": "workflow_response_update",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Signature", "value": "{{signature}}", "type": "text"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"2023-08-25T04:35:59.841972\",\n  \"type\": \"workflow_response_update\",\n  \"data\": {\n    \"id\": \"66044dd4-d0b8-4efd-9c55-a970347f90f1\",\n    \"created_at_utc\": \"2023-08-25T04:35:27.341000\",\n    \"modified_at_utc\": \"2023-08-25T04:35:59.462000\",\n    \"workflow_id\": \"d2a02d35-6cba-4873-a1fd-060de0342cdd\",\n    \"customer_id\": \"13212830-0a1b-473f-b05a-ddd6872d367b\",\n    \"customer_name\": \"Customer Name\",\n    \"customer_number\": \"+919999999999\",\n    \"data\": [\n      {\n        \"question\": {\"id\": \"95a68fb7-0d52-4597-a5ef-0494f0c49509\", \"created_at_utc\": \"2023-08-25T04:35:27.949000\", \"step_number\": 1, \"message\": \"What is your company size?\", \"message_type\": \"List Message\", \"buttons\": [], \"list_message_name\": \"interaktive_list\", \"user_trait_name\": \"company_size\", \"variable_fallback_values\": []},\n        \"answer\": {\"id\": \"f37b61e7-065e-413f-bc36-bf0ba183e605\", \"created_at_utc\": \"2023-08-25T04:35:38.351000\", \"message\": \"500+\", \"media_id\": null, \"media_url\": null, \"media_file_name\": null, \"received_at_utc\": \"2023-08-25T04:35:36.776000\", \"message_content_type\": \"InteractiveListReply\"}\n      },\n      {\n        \"question\": {\"id\": \"e3375b79-86ea-454d-a9eb-9b4154020f56\", \"created_at_utc\": \"2023-08-25T04:35:39.478000\", \"step_number\": 2, \"message\": \"Great, would you like to continue?\", \"message_type\": \"Normal Message\", \"buttons\": [], \"list_message_name\": \"\", \"user_trait_name\": null, \"variable_fallback_values\": []},\n        \"answer\": {\"id\": \"d9afabb4-1411-4010-b21b-4f51c311850b\", \"created_at_utc\": \"2023-08-25T04:35:59.222000\", \"message\": \"Yes\", \"media_id\": null, \"media_url\": null, \"media_file_name\": null, \"received_at_utc\": \"2023-08-25T04:35:57.611000\", \"message_content_type\": \"Text\"}\n      }\n    ],\n    \"triggered_from\": \"FAQ Message\"\n  }\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/webhook/interakt", "host": ["{{baseUrl}}"], "path": ["webhook", "interakt"]},
+            "description": "Webhook: Workflow response update (complete request body with all fields - includes questions and answers)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Webhook Events - Account",
+      "item": [
+        {
+          "name": "account_update",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Signature", "value": "{{signature}}", "type": "text"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"2022-06-03T05:43:33.930227\",\n  \"type\": \"account_update\",\n  \"data\": {\n    \"phone_number\": \"16505551111\",\n    \"event\": \"VERIFIED_ACCOUNT\"\n  }\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/webhook/interakt", "host": ["{{baseUrl}}"], "path": ["webhook", "interakt"]},
+            "description": "Webhook: Account update (complete request body with all fields)"
+          },
+          "response": []
+        },
+        {
+          "name": "account_review_update",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Signature", "value": "{{signature}}", "type": "text"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"2022-06-03T05:43:33.930227\",\n  \"type\": \"account_review_update\",\n  \"data\": {\n    \"decision\": \"APPROVED\"\n  }\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/webhook/interakt", "host": ["{{baseUrl}}"], "path": ["webhook", "interakt"]},
+            "description": "Webhook: Account review update (complete request body with all fields)"
+          },
+          "response": []
+        },
+        {
+          "name": "account_alerts",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Signature", "value": "{{signature}}", "type": "text"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"2022-06-03T05:43:33.930227\",\n  \"type\": \"account_alerts\",\n  \"data\": {}\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/webhook/interakt", "host": ["{{baseUrl}}"], "path": ["webhook", "interakt"]},
+            "description": "Webhook: Account alerts (complete request body with all fields)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Webhook Events - Business & Template",
+      "item": [
+        {
+          "name": "business_capability_update",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Signature", "value": "{{signature}}", "type": "text"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"2022-06-03T05:43:33.930227\",\n  \"type\": \"business_capability_update\",\n  \"data\": {\n    \"max_daily_conversation_per_phone\": 123,\n    \"max_phone_numbers_per_waba\": 23,\n    \"max_phone_numbers_per_business\": 120\n  }\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/webhook/interakt", "host": ["{{baseUrl}}"], "path": ["webhook", "interakt"]},
+            "description": "Webhook: Business capability update (complete request body with all fields)"
+          },
+          "response": []
+        },
+        {
+          "name": "phone_number_quality_update",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Signature", "value": "{{signature}}", "type": "text"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"2022-06-03T05:43:33.930227\",\n  \"type\": \"phone_number_quality_update\",\n  \"data\": {\n    \"display_phone_number\": \"16505551111\",\n    \"event\": \"FLAGGED\",\n    \"current_limit\": \"TIER_10K\"\n  }\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/webhook/interakt", "host": ["{{baseUrl}}"], "path": ["webhook", "interakt"]},
+            "description": "Webhook: Phone number quality update (complete request body with all fields)"
+          },
+          "response": []
+        },
+        {
+          "name": "template_performance_metrics",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Signature", "value": "{{signature}}", "type": "text"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"2022-06-03T05:43:33.930227\",\n  \"type\": \"template_performance_metrics\",\n  \"data\": {\n    \"templates_performance_metrics\": {\n      \"template_id\": \"281a5a78-f2b2-46c9-b9bb-d620d3b2894c\",\n      \"template_name\": \"test_template\",\n      \"template_language\": \"en\"\n    }\n  }\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/webhook/interakt", "host": ["{{baseUrl}}"], "path": ["webhook", "interakt"]},
+            "description": "Webhook: Template performance metrics (complete request body with all fields)"
+          },
+          "response": []
+        },
+        {
+          "name": "message_template_status_update",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Signature", "value": "{{signature}}", "type": "text"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"2022-06-03T05:43:33.930227\",\n  \"type\": \"message_template_status_update\",\n  \"data\": {\n    \"event\": \"APPROVED\",\n    \"message_template_id\": 12345678,\n    \"message_template_name\": \"my_message_template\",\n    \"message_template_language\": \"pt-BR\",\n    \"reason\": null\n  }\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/webhook/interakt", "host": ["{{baseUrl}}"], "path": ["webhook", "interakt"]},
+            "description": "Webhook: Message template status update (complete request body with all fields)"
+          },
+          "response": []
+        },
+        {
+          "name": "messages",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Signature", "value": "{{signature}}", "type": "text"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": \"1.0\",\n  \"timestamp\": \"2022-06-03T05:43:33.930227\",\n  \"type\": \"messages\"\n}"
+            },
+            "url": {"raw": "{{baseUrl}}/webhook/interakt", "host": ["{{baseUrl}}"], "path": ["webhook", "interakt"]},
+            "description": "Webhook: Messages event (complete request body with all fields)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin Operations",
+      "item": [
+        {
+          "name": "Clear Token Cache",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Signature", "value": "{{signature}}", "type": "text"}],
+            "url": {"raw": "{{baseUrl}}/admin/clear-cache", "host": ["{{baseUrl}}"], "path": ["admin", "clear-cache"]},
+            "description": "Clear SFMC token cache"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Configuration",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Signature", "value": "{{signature}}", "type": "text"}],
+            "url": {"raw": "{{baseUrl}}/admin/config", "host": ["{{baseUrl}}"], "path": ["admin", "config"]},
+            "description": "Get non-sensitive configuration"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Signature Testing",
+      "item": [
+        {
+          "name": "Invalid Signature (Test 401)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Signature", "value": "sha256=invalid", "type": "text"}],
+            "body": {"mode": "raw", "raw": "{\"version\":\"1.0\",\"type\":\"message_api_sent\",\"timestamp\":\"2024-01-30T10:30:00Z\",\"data\":{}}"},
+            "url": {"raw": "{{baseUrl}}/webhook/interakt", "host": ["{{baseUrl}}"], "path": ["webhook", "interakt"]},
+            "description": "Should return 401 Unauthorized"
+          },
+          "response": []
+        },
+        {
+          "name": "Missing Signature (Test 401)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\"version\":\"1.0\",\"type\":\"message_api_sent\",\"timestamp\":\"2024-01-30T10:30:00Z\",\"data\":{}}"},
+            "url": {"raw": "{{baseUrl}}/webhook/interakt", "host": ["{{baseUrl}}"], "path": ["webhook", "interakt"]},
+            "description": "Should return 401 Unauthorized"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "requests": {},
+        "exec": ["// Simple string matching - no HMAC calculation\n// Signature header is read directly from collection variable {{signature}}"]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:1112",
+      "description": "Base URL of the webhook server"
+    },
+    {
+      "key": "signature",
+      "value": "sha256=VGRHLVdwcHBjZTRud291c1NINDlFS1dnVWstbzNhQU5Rdy1nNzg5cnBuMDo=",
+      "description": "Simple string matching signature (format: sha256=<base64_secret>)"
+    }
+  ]
+}

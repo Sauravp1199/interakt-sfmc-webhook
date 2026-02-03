@@ -145,24 +145,186 @@ export interface InteraktWebhookPayload {
 }
 
 /**
+ * Detect webhook type from payload structure
+ * Used for auto-normalization when type is missing
+ */
+function detectWebhookType(payload: Record<string, unknown>): string {
+  const message = payload.message as Record<string, unknown> | undefined;
+  const event = payload.event as Record<string, unknown> | undefined;
+
+  // If it's a click event, infer from event object
+  if (event && event.click_type) {
+    return 'message_api_clicked';
+  }
+
+  // If it has message with status, infer from message_status
+  if (message && message.message_status) {
+    const status = String(message.message_status).toLowerCase();
+    switch (status) {
+      case 'sent':
+        return 'message_api_sent';
+      case 'delivered':
+        return 'message_api_delivered';
+      case 'read':
+        return 'message_api_read';
+      case 'failed':
+        return 'message_api_failed';
+      case 'received':
+        return 'message_received';
+      default:
+        return 'message_api_sent';
+    }
+  }
+
+  // Default fallback
+  return 'message_api_sent';
+}
+
+/**
+ * Auto-normalize payload format
+ * Supports both:
+ * 1. Standard format: {"version": "1.0", "type": "...", "timestamp": "...", "data": {...}}
+ * 2. Legacy format: {"customer": {...}, "message": {...}, "event": {...}} (auto-wrapped and transformed)
+ *
+ * For legacy format, event fields are merged into message.meta_data to ensure consistency
+ */
+function normalizePayload(payload: Record<string, unknown>): Record<string, unknown> {
+  // Check if it's already in correct format (has type and data)
+  if (payload.type && typeof payload.type === 'string' && payload.data && typeof payload.data === 'object') {
+    // Already normalized
+    return payload;
+  }
+
+  // Check if it's the legacy format (customer/message/event at root)
+  const hasCustomer = payload.customer && typeof payload.customer === 'object';
+  const hasMessage = payload.message && typeof payload.message === 'object';
+  const hasEvent = payload.event && typeof payload.event === 'object';
+
+  if (hasCustomer || hasMessage || hasEvent) {
+    // Auto-normalize: wrap in required structure and transform event to meta_data
+
+    // Start with the message object, or empty if not provided
+    const messageData = (payload.message || {}) as Record<string, unknown>;
+    let normalizedMessage: Record<string, unknown> = {};
+
+    // Copy all message fields
+    for (const [key, value] of Object.entries(messageData)) {
+      if (value !== undefined) {
+        normalizedMessage[key] = value;
+      }
+    }
+
+    // If event exists, merge its fields into message.meta_data
+    if (hasEvent) {
+      const eventData = payload.event as Record<string, unknown>;
+      const existingMetaData = (normalizedMessage.meta_data || {}) as Record<string, unknown>;
+
+      // Create a new meta_data object with existing data
+      const mergedMetaData: Record<string, unknown> = {};
+
+      // Copy existing meta_data fields
+      for (const [key, value] of Object.entries(existingMetaData)) {
+        if (value !== undefined) {
+          mergedMetaData[key] = value;
+        }
+      }
+
+      // Copy all event fields into meta_data
+      for (const [key, value] of Object.entries(eventData)) {
+        if (value !== undefined && value !== null) {
+          mergedMetaData[key] = value;
+        }
+      }
+
+      normalizedMessage.meta_data = mergedMetaData;
+    }
+
+    // Build the normalized data object
+    const dataObj: Record<string, unknown> = {
+      customer: payload.customer,
+      message: normalizedMessage,
+    };
+
+    // Include any other root-level fields in data (but exclude event since we merged it)
+    if (payload.id) {
+      dataObj.id = payload.id;
+    }
+    if (payload.workflow_id) {
+      dataObj.workflow_id = payload.workflow_id;
+    }
+    if (payload.customer_id) {
+      dataObj.customer_id = payload.customer_id;
+    }
+    if (payload.customer_name) {
+      dataObj.customer_name = payload.customer_name;
+    }
+    if (payload.customer_number) {
+      dataObj.customer_number = payload.customer_number;
+    }
+    if (payload.data && payload.data !== payload.customer) {
+      dataObj.data = payload.data;
+    }
+
+    // Detect webhook type from the payload
+    const detectedType = detectWebhookType(payload);
+
+    const normalized = {
+      version: payload.version || '1.0',
+      type: payload.type || detectedType,
+      timestamp: payload.timestamp || new Date().toISOString(),
+      data: dataObj,
+    };
+
+    return normalized;
+  }
+
+  // Return as-is if we can't determine the format
+  return payload;
+}
+
+/**
  * Validate Interakt webhook payload
+ * Supports two payload formats:
+ * 1. Standard format: {"version": "1.0", "type": "message_api_sent", "timestamp": "...", "data": {...}}
+ * 2. Simplified format: {"customer": {...}, "message": {...}, "event": {...}} (auto-normalized to #1)
  */
 export function validateWebhookPayload(body: unknown): InteraktWebhookPayload {
   if (!body || typeof body !== 'object') {
     throw new ValidationError('body', 'Request body must be a JSON object');
   }
 
-  const payload = body as Record<string, unknown>;
+  let payload = body as Record<string, unknown>;
 
-  if (!payload.type || typeof payload.type !== 'string') {
-    throw new ValidationError('type', 'Missing or invalid webhook type');
+  // Auto-normalize payload if needed
+  payload = normalizePayload(payload);
+
+  // After normalization, ensure we have the required fields
+  const normalizedPayload = payload as Record<string, unknown>;
+
+  // Ensure type exists
+  if (!normalizedPayload.type) {
+    const hasData = normalizedPayload.customer || normalizedPayload.message || normalizedPayload.event;
+    if (hasData) {
+      // If data exists but no type, we should have normalized it - something is wrong
+      throw new ValidationError('type', 'Failed to detect webhook type from payload');
+    }
+    throw new ValidationError('type', 'Missing type field');
   }
 
-  if (!payload.data || typeof payload.data !== 'object') {
-    throw new ValidationError('data', 'Missing or invalid data object');
+  if (typeof normalizedPayload.type !== 'string') {
+    throw new ValidationError('type', 'Field "type" must be a string');
   }
 
-  return payload as unknown as InteraktWebhookPayload;
+  // Ensure data exists
+  if (!normalizedPayload.data) {
+    throw new ValidationError('data', 'Missing data object');
+  }
+
+  if (typeof normalizedPayload.data !== 'object' || normalizedPayload.data === null) {
+    throw new ValidationError('data', 'Field "data" must be an object');
+  }
+
+  return normalizedPayload as unknown as InteraktWebhookPayload;
 }
 
 /**
