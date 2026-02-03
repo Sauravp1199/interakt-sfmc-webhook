@@ -8,7 +8,7 @@ const router = Router();
 /**
  * POST /admin/clear-cache
  * Clear SFMC token cache
- * 
+ *
  * SIGNATURE VALIDATION:
  * Signature verification is handled by signatureAuthMiddleware in src/middleware/signature-auth.ts
  * This middleware validates the Interakt-Signature header before the request reaches this handler
@@ -31,7 +31,7 @@ router.post('/clear-cache', (req: Request, res: Response) => {
 /**
  * GET /admin/config
  * Get non-sensitive configuration (for debugging)
- * 
+ *
  * SIGNATURE VALIDATION:
  * Signature verification is handled by signatureAuthMiddleware in src/middleware/signature-auth.ts
  * This middleware validates the Interakt-Signature header before the request reaches this handler

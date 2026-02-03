@@ -3,10 +3,10 @@ import { logger } from './logger';
 
 /**
  * Verifies Interakt webhook signature using SHA256 HMAC
- * 
+ *
  * The signature is sent in the "Interakt-Signature" header in the format:
  * sha256=<hex_encoded_sha256_hmac>
- * 
+ *
  * @param payload - The raw request body as a string
  * @param receivedSignature - The signature from the "Interakt-Signature" header
  * @param secret - The shared secret key
@@ -15,7 +15,7 @@ import { logger } from './logger';
  *   If false: requires valid signature or rejects with 401 (strict mode)
  * @param strictMode - If true, ALWAYS require valid signature regardless of isLocal
  * @returns true if signature is valid, false otherwise
- * 
+ *
  * @example
  * // Development mode - allows missing signature
  * const isValid = verifyInteraktSignature(
@@ -25,7 +25,7 @@ import { logger } from './logger';
  *   true,  // isLocal = true (development)
  *   false  // strictMode = false (lenient)
  * );
- * 
+ *
  * @example
  * // Strict mode - requires valid signature always
  * const isValid = verifyInteraktSignature(
@@ -105,7 +105,7 @@ export function verifyInteraktSignature(
 /**
  * Express middleware to verify Interakt webhook signature
  * Must be used after express.json() middleware with raw body capture
- * 
+ *
  * Requires the request to have a rawBody property set by express.json verify callback
  */
 export function createSignatureVerificationMiddleware(

@@ -9,11 +9,11 @@ const router = Router();
 /**
  * POST /event
  * Receive event payload and insert into SFMC Data Extension
- * 
+ *
  * SIGNATURE VALIDATION:
  * Signature verification is handled by signatureAuthMiddleware in src/middleware/signature-auth.ts
  * This middleware validates the Interakt-Signature header before the request reaches this handler
- * 
+ *
  * Therefore, if we reach this point, the signature is already verified as valid
  */
 router.post('/', async (req: Request, res: Response) => {

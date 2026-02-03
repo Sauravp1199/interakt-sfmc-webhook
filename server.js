@@ -42,7 +42,7 @@ startAutoClearTimer();
 app.use(helmet());
 
 // Use express.json with verify callback to capture raw body for signature verification
-app.use(express.json({ 
+app.use(express.json({
     limit: '10mb',
     verify: (req, res, buf, encoding) => {
         // Save raw body as Buffer for signature verification
@@ -304,7 +304,7 @@ app.post('/webhook/interakt', async (req, res) => {
 
         // Enforce signature validation (always required)
         const signature = req.headers[SIGNATURE_HEADER];
-        
+
         // Get environment-specific secret (LOCAL or PROD)
         const host = req.get('host');
         let secret;
@@ -336,7 +336,7 @@ app.post('/webhook/interakt', async (req, res) => {
         const expectedSignature = `sha256=${secret}`;
         const isValidSignature = signature === expectedSignature;
 
-        logger.debug('Signature verification', { 
+        logger.debug('Signature verification', {
             received: signature.substring(0, 20) + '...',
             expected: expectedSignature.substring(0, 20) + '...',
             match: isValidSignature

@@ -683,11 +683,11 @@ async function handleGenericEvent(payload: InteraktWebhookPayload, rawPayload: s
 /**
  * POST /webhook/interakt
  * Main webhook endpoint for Interakt events - stores ALL events in master Data Extension
- * 
+ *
  * SIGNATURE VALIDATION:
  * Signature verification is handled by signatureAuthMiddleware in src/middleware/signature-auth.ts
  * This middleware validates the Interakt-Signature header before the request reaches this handler
- * 
+ *
  * Therefore, if we reach this point, the signature is already verified as valid
  */
 router.post('/interakt', async (req: Request, res: Response) => {
